@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatCard } from "@/components/app/page-header";
 import { AutoRefresh } from "@/components/app/auto-refresh";
 import { CampaignControls, CampaignSettings, AddRecipients, SequenceEditor } from "./campaign-client";
+import { SimulateReply } from "./simulate";
 
 const VARIANT: Record<string, "secondary" | "default" | "success" | "warning" | "outline" | "destructive"> = {
   draft: "secondary", scheduled: "default", running: "success", paused: "warning", completed: "outline", cancelled: "destructive",
@@ -41,6 +42,7 @@ export default async function CampaignPage({ params }: PageProps<"/campaigns/[id
   const editable = ["draft", "paused", "scheduled"].includes(c.status) && ws.role !== "viewer";
   const sequence = (sequences ?? []).find((s) => s.id === c.follow_up_sequence_id) ?? null;
   const awaiting = r.filter((x) => x.stop_reason === "awaiting_approval").length;
+  const demoAccount = (accounts ?? []).find((a) => a.id === c.email_account_id)?.is_mock && process.env.APP_ENV !== "production";
 
   return (
     <div className="space-y-6">
@@ -92,6 +94,7 @@ export default async function CampaignPage({ params }: PageProps<"/campaigns/[id
                     <TableCell>
                       <Badge variant={VARIANT[x.status] ?? "secondary"}>{(cc.recipientStatus as Record<string, string>)[x.status] ?? x.status}</Badge>
                       {x.stop_reason && <div className="mt-0.5 max-w-xs truncate text-xs text-muted-foreground" title={x.stop_reason}>{x.stop_reason}</div>}
+                      {demoAccount && x.last_sent_at && ws.role !== "viewer" && <SimulateReply recipientId={x.id} />}
                     </TableCell>
                   </TableRow>
                 ))}

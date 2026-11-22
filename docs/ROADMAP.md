@@ -9,7 +9,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 3 Intelligence | Hunter, website crawler + signals, AI research, opportunities, lead scoring | ✅ |
 | 4 Email generation | Agency profiles, batch generation via Inngest, fact-check, review/edit/approve UI | ✅ |
 | 5 Campaigns | Mail adapters, eligibility gate, queue, schedule, rate limits, follow-ups, unsubscribe | ✅ |
-| 6 Inbox & CRM | Reply sync + matching, AI categorisation, pipeline, tasks, notes | ⬜ |
+| 6 Inbox & CRM | Reply sync + matching, AI categorisation, pipeline, tasks, notes | ✅ |
 | 7 Analytics & billing | Dashboard, usage, Stripe checkout/portal/webhooks, limits | ⬜ |
 | 8 Production readiness | Security review, e2e tests, deployment (Vercel + Supabase) | ⬜ |
 
@@ -152,3 +152,24 @@ protection, pause/cancel) — all passing.
 Graph cannot set `List-Unsubscribe` (footer link remains). No live SMTP send
 was performed (no mailbox credentials provided, by design no real emails in
 tests).
+
+### Phase 6 — Inbox & CRM
+**Implemented:** mailbox polling (IMAP / Gmail / Graph cursors per account);
+inbound ingestion matched by In-Reply-To → References → sender (60 days),
+idempotent on Message-ID; DSN bounces → suppression; auto-reply detection;
+AI reply categorisation (9 categories, objection flag, next step, follow-up
+days) with heuristic fallback; effects: human reply stops the sequence,
+out-of-office postpones, unsubscribe/complaint/objection suppresses, CRM
+status update, tasks for interested/meeting/follow-up-later; conversations;
+inbox UI (filters, thread with our messages + replies, AI summary and next
+step, category override, handled/close, AI draft that is never sent
+automatically, explicit send with threading and suppression check); demo-only
+reply simulation for mock accounts; CRM pipeline (drag & drop between
+statuses, optimistic updates, "only my leads"), tasks (mine/all, overdue/
+today, assignment), notes and tasks on the company profile.
+
+**Fix:** disambiguated `organization_members → users` embeds (two FKs).
+
+**Tests:** 74 unit (+ reply heuristics) and 45 DB (+ inbound matching,
+stop/postpone/suppress, DSN bounce, duplicates, unrelated mail, threaded
+manual reply) — all passing.

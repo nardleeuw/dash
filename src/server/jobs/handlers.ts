@@ -27,6 +27,7 @@ export const handlers: HandlerMap = {
   "retention/purge": async () => purgeExpiredData(),
   "research/business.requested": async (data) => (await import("@/server/research/run")).runResearch(data),
   "campaigns/tick": async () => (await import("@/server/sending/tick")).campaignTick(),
+  "inbox/sync": async () => (await import("@/server/inbox/sync")).syncAllMailboxes(),
   "emails/batch.created": async (data) => (await import("@/server/emails/batch")).planBatch(data),
   "emails/generate.requested": async (data) => {
     const { generateEmailById } = await import("@/server/emails/generate");

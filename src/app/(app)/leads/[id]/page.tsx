@@ -37,7 +37,7 @@ export default async function BusinessProfilePage({ params, searchParams }: Page
     supabase.from("business_sources").select("id, provider, external_id, retrieved_at, retention_class, expires_at, is_exportable, attribution, location_id").eq("business_id", id).order("retrieved_at", { ascending: false }),
     supabase.from("business_attributes").select("attribute, provider, retrieved_at, expires_at, location_id").eq("business_id", id),
     supabase.from("activities").select("id, type, data, created_at, actor_id").eq("business_id", id).order("created_at", { ascending: false }).limit(50),
-    supabase.from("organization_members").select("user_id, users(full_name, email)").eq("org_id", ws.org.id),
+    supabase.from("organization_members").select("user_id, users!organization_members_user_id_fkey(full_name, email)").eq("org_id", ws.org.id),
   ]);
 
   const locale = t.meta.dateLocale;

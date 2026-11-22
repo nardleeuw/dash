@@ -11,6 +11,7 @@ import { getDictionary } from "@/i18n/server";
 import { fmt, formatDate } from "@/i18n/format";
 import { ResearchButton } from "./research-buttons";
 import { ProfileEmailsTab, ProfileEmailsTrigger } from "./emails-tab";
+import { ProfileCrmTab, ProfileCrmTrigger } from "./crm-tab";
 
 export async function ProfileExtraTriggers() {
   const t = await getDictionary();
@@ -18,6 +19,7 @@ export async function ProfileExtraTriggers() {
     <>
       <TabsTrigger value="research">{t.leads.profile.research}</TabsTrigger>
       <ProfileEmailsTrigger />
+      <ProfileCrmTrigger />
     </>
   );
 }
@@ -203,6 +205,7 @@ export async function ProfileExtraTabs({ businessId, canWrite }: { businessId: s
         )}
       </TabsContent>
       <ProfileEmailsTab businessId={businessId} canWrite={canWrite} />
+      <ProfileCrmTab businessId={businessId} />
     </>
   );
 }

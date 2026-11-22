@@ -22,7 +22,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
     body = <OrganizationForm initial={org!} canEdit={hasMinRole(ws.role, "admin")} />;
   } else if (tab === "team") {
     const [{ data: members }, { data: invitations }] = await Promise.all([
-      supabase.from("organization_members").select("id, role, user_id, users(full_name, email)").eq("org_id", ws.org.id).order("created_at"),
+      supabase.from("organization_members").select("id, role, user_id, users!organization_members_user_id_fkey(full_name, email)").eq("org_id", ws.org.id).order("created_at"),
       hasMinRole(ws.role, "admin") ? supabase.from("organization_invitations").select("id, email, role, expires_at").eq("org_id", ws.org.id).is("accepted_at", null).is("revoked_at", null) : Promise.resolve({ data: [] }),
     ]);
     body = (
