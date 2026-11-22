@@ -49,6 +49,15 @@ env vars), not this script.
 Note: KVK returns `indNonMailing: "Ja"` when the business has opted out of
 unsolicited advertising. The compliance gate treats this as a hard block.
 
+## Cloud sandbox notes
+
+- Node's built-in `fetch` only uses the sandbox HTTPS proxy with
+  `NODE_USE_ENV_PROXY=1` — start the dev server as `NODE_USE_ENV_PROXY=1 pnpm dev`.
+- API keys for OpenAI, Hunter, Supabase and Vercel are injected by the proxy;
+  `.env` holds the placeholder `proxy-injected` for those.
+- `overpass-api.de` resets TLS connections from the sandbox; the OSM adapter is
+  tested with fixtures here (set `OVERPASS_URL` to use another instance).
+
 ## Conventions
 
 - Code, comments and technical docs in English; UI copy in Dutch (default) and
