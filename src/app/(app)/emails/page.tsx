@@ -119,9 +119,11 @@ export default async function EmailsPage({ searchParams }: PageProps<"/emails">)
       </div>
     );
   } else {
-    const profile = (profiles ?? []).find((p) => !p.client_id) ?? (profiles ?? [])[0];
+    const requested = typeof sp.profile === "string" ? sp.profile : null;
+    const profile = (profiles ?? []).find((p) => p.id === requested) ?? (profiles ?? []).find((p) => !p.client_id) ?? (profiles ?? [])[0];
     body = profile ? (
       <ProfileForm
+        key={profile.id}
         profile={profile as never}
         industries={INDUSTRIES.map((i) => ({ key: i.key, label: t.meta.locale === "en" ? i.en : i.nl }))}
         canEdit={hasMinRole(ws.role, "manager")}

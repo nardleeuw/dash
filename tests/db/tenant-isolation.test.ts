@@ -20,6 +20,7 @@ beforeAll(async () => {
   ]);
   orgA = await createOrgFor(alice, `Agency A ${Date.now()}`);
   orgB = await createOrgFor(bob, `Agency B ${Date.now()}`);
+  await admin.from("subscriptions").update({ limit_overrides: { users: 10 } }).eq("org_id", (await Promise.resolve(orgA)));
   await addMember(orgA, viewer, "viewer");
   await addMember(orgA, rep, "sales_rep");
   bizA = await insertBusiness(orgA, "Bakkerij Alfa", { kvk_number: "12345678" });
@@ -250,5 +251,15 @@ describe("duplicate-send prevention", () => {
     expect(first.error).toBeNull();
     const second = await admin.from("outbound_messages").insert(message(2));
     expect(second.error?.code).toBe("23505"); // unique violation
+  });
+});
+
+describe("seat limits", () => {
+  it("blocks invitations beyond the plan's user limit", async () => {
+    const { data: sub } = await admin.from("subscriptions").select("limit_overrides").eq("org_id", orgB).single();
+    void sub;
+    await admin.from("subscriptions").update({ limit_overrides: { users: 1 } }).eq("org_id", orgB);
+    const { error } = await bob.client.from("organization_invitations").insert({ org_id: orgB, email: "extra@b.test", role: "viewer", token_hash: `h-${Date.now()}`, invited_by: bob.id });
+    expect(error?.message).toMatch(/seat limit/);
   });
 });

@@ -10,7 +10,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 4 Email generation | Agency profiles, batch generation via Inngest, fact-check, review/edit/approve UI | ✅ |
 | 5 Campaigns | Mail adapters, eligibility gate, queue, schedule, rate limits, follow-ups, unsubscribe | ✅ |
 | 6 Inbox & CRM | Reply sync + matching, AI categorisation, pipeline, tasks, notes | ✅ |
-| 7 Analytics & billing | Dashboard, usage, Stripe checkout/portal/webhooks, limits | ⬜ |
+| 7 Analytics & billing | Dashboard, usage, Stripe checkout/portal/webhooks, limits | ✅ |
 | 8 Production readiness | Security review, e2e tests, deployment (Vercel + Supabase) | ⬜ |
 
 ## Phase reports
@@ -173,3 +173,25 @@ today, assignment), notes and tasks on the company profile.
 **Tests:** 74 unit (+ reply heuristics) and 45 DB (+ inbound matching,
 stop/postpone/suppress, DSN bounce, duplicates, unrelated mail, threaded
 manual reply) — all passing.
+
+### Phase 7 — Analytics, billing & client workspaces
+**Implemented:** `analytics_summary` RPC (membership-checked) with funnel
+totals, daily series and breakdowns by industry, province, campaign, agency
+client and email version, plus reply categories; rates (reply, positive,
+meeting, lead conversion, bounce) — opens deliberately not tracked; analytics
+page (range presets, funnel, validated 3-series line chart with legend and
+table view, breakdown tables, provider cost table for admins via
+`provider_costs`); overview dashboard (30-day KPIs, needs-attention, setup
+checklist, credit bars); Stripe Billing (customer creation, subscription
+checkout, credit-pack checkout, customer portal, signature-verified webhook
+with retry-safe idempotency: checkout completed, subscription created/
+updated/deleted, invoice payment failed), demo mode when Stripe is not
+configured, platform-admin plan editor and Stripe sync; seat limits enforced
+in the database, trial expiry and past-due blocking in `consume_credits`,
+send credits consumed per outbound message, trial now includes 50 sends;
+client workspaces (create with a seeded per-client sender profile, archive,
+per-client stats; per-client profile editing).
+
+**Tests:** 74 unit and 51 DB (+ analytics access control, trial expiry,
+Stripe webhook signature/idempotency/credit grant/subscription update/payment
+failure, seat limit) — all passing.

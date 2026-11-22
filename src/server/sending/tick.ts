@@ -165,6 +165,19 @@ export async function processRecipient(admin: SupabaseClient, r: Recipient): Pro
     messageRowId = inserted.id;
   }
 
+  // Sending consumes "send" credits (idempotent per outbound row).
+  const { consumeCredits, CreditsExhaustedError } = await import("@/server/usage");
+  try {
+    await consumeCredits({ orgId: r.org_id, kind: "send", idempotencyKey: `send:${messageRowId}`, referenceType: "outbound_message", referenceId: messageRowId });
+  } catch (err) {
+    if (err instanceof CreditsExhaustedError) {
+      await admin.from("outbound_messages").update({ status: "failed", error: "send_credits_exhausted", attempts: MAX_ATTEMPTS - 1 }).eq("id", messageRowId);
+      await release(admin, r.id, { next_send_at: new Date(now.getTime() + 6 * 3_600_000).toISOString(), stop_reason: "send_credits_exhausted" });
+      return "credits_exhausted";
+    }
+    throw err;
+  }
+
   try {
     const provider = await providerFor(admin, account);
     const res = await provider.send(msg);
