@@ -26,4 +26,13 @@ export const handlers: HandlerMap = {
   },
   "retention/purge": async () => purgeExpiredData(),
   "research/business.requested": async (data) => (await import("@/server/research/run")).runResearch(data),
+  "emails/batch.created": async (data) => (await import("@/server/emails/batch")).planBatch(data),
+  "emails/generate.requested": async (data) => {
+    const { generateEmailById } = await import("@/server/emails/generate");
+    const res = await generateEmailById(data.orgId, data.emailId);
+    const { createAdminClient } = await import("@/server/supabase/admin");
+    const { data: row } = await createAdminClient().from("generated_emails").select("batch_id").eq("id", data.emailId).single();
+    if (row?.batch_id) await (await import("@/server/emails/batch")).finalizeBatch(data.orgId, row.batch_id);
+    return res;
+  },
 };

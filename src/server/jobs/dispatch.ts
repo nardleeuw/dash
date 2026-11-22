@@ -10,6 +10,7 @@ import { runInline } from "./inline";
  * small self-hosted installs).
  */
 export async function dispatch<N extends JobName>(name: N, data: JobEvents[N]) {
+  if (process.env.JOBS_DISABLED === "1") return; // tests drive jobs explicitly
   if (inngestEnabled()) {
     await inngest.send({ name, data });
     return;
@@ -17,11 +18,17 @@ export async function dispatch<N extends JobName>(name: N, data: JobEvents[N]) {
   if (process.env.APP_ENV === "production") {
     console.warn(`[jobs] Inngest not configured in production — running ${name} inline`);
   }
-  after(async () => {
+  const run = async () => {
     try {
       await runInline(name, data);
     } catch (err) {
       console.error(`[jobs] inline ${name} failed`, err);
     }
-  });
+  };
+  try {
+    after(run);
+  } catch {
+    // Outside a request scope (scripts, cron): run detached.
+    void run();
+  }
 }

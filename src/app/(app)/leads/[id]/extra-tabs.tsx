@@ -202,7 +202,7 @@ export async function ProfileExtraTabs({ businessId, canWrite }: { businessId: s
           </div>
         )}
       </TabsContent>
-      <ProfileEmailsTab businessId={businessId} />
+      <ProfileEmailsTab businessId={businessId} canWrite={canWrite} />
     </>
   );
 }

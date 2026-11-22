@@ -7,7 +7,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 1 Foundation | Next.js 16 app, Supabase schema + RLS, auth, onboarding, workspaces, UI shell, i18n NL/EN, docs | ✅ |
 | 2 Discovery | KVK / Google Places / OSM / PDOK adapters, search filters, table + map, import, dedup, provenance, saved searches | ✅ |
 | 3 Intelligence | Hunter, website crawler + signals, AI research, opportunities, lead scoring | ✅ |
-| 4 Email generation | Agency profiles, batch generation via Inngest, fact-check, review/edit/approve UI | ⬜ |
+| 4 Email generation | Agency profiles, batch generation via Inngest, fact-check, review/edit/approve UI | ✅ |
 | 5 Campaigns | Mail adapters, eligibility gate, queue, schedule, rate limits, follow-ups, unsubscribe | ⬜ |
 | 6 Inbox & CRM | Reply sync + matching, AI categorisation, pipeline, tasks, notes | ⬜ |
 | 7 Analytics & billing | Dashboard, usage, Stripe checkout/portal/webhooks, limits | ⬜ |
@@ -92,3 +92,29 @@ with a hidden prompt injection, Hunter enrichment, re-scoring) — all passing.
 `insufficient_quota` → AI runs in labelled mock mode locally until billing is
 enabled; the deterministic analysis runs regardless. Hunter free plan
 (50 searches / 100 verifications).
+
+### Phase 4 — Individual email generation
+**Implemented:** sender (agency) profiles with services, ICP, USP, tone, style,
+language, length, CTA, example emails, avoided phrases and signature; per-email
+pipeline: ensure fresh research for THAT business (≤30 days, otherwise
+research now) → choose the strongest verified opportunity matching a service →
+choose the best recipient (personal/verified first, never invalid) → write
+email + alternative with structured output → deterministic fact-check (every
+claim must be found in the research, no invented numbers, no hypotheses as
+fact, only the agency's own links, avoided phrases, deceptive subjects, spam
+triggers, length) → personalisation score → compliance evaluation; batches
+from selection / current filter / list with missing-only or regenerate-all,
+DB-unique email per business × profile × step, idempotent credits, Inngest
+fan-out with per-org concurrency (inline pool locally), progress counts,
+retry failed; review table (filters, approve selected / all eligible, reject,
+regenerate), editor (edit, recipient choice, alternative swap, regenerate with
+instruction, fact-check + compliance + evidence panels, revision history);
+hard eligibility gate (legal basis per address, generic addresses not
+automatically allowed, suppression, KVK non-mailing, sender identity, privacy
+notice, send-time approval/fact-check/mock checks).
+
+**Tests:** 61 unit (+ fact-check, recipient choice, mock writer, eligibility
+gate) and 31 DB (+ batch of 3 individual emails, no duplicates, revisions,
+compliance becomes eligible after documenting a basis and blocks again after an
+objection) — all passing. Browser: profile → import → generate → batch
+progress → review → editor → approve.
