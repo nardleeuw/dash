@@ -340,6 +340,22 @@ async function upsertSources(admin: SupabaseClient, orgId: string, businessId: s
 }
 
 /** Re-derive the visible golden record from all non-expired attributes. */
+/**
+ * Build the update for attribute-managed fields only. A field is written when a
+ * current attribute provides a value, or when it was previously derived from
+ * attributes (its source may have expired — then it becomes null). Fields that
+ * were never attribute-managed (set directly) are left untouched.
+ */
+export function managedUpdate(resolved: { values: Record<string, unknown>; sources: Record<string, string> }, previousSources: Record<string, string>) {
+  const out: Record<string, unknown> = {};
+  for (const [field, value] of Object.entries(resolved.values)) {
+    if (field in resolved.sources) out[field] = value;
+    else if (field in previousSources) out[field] = null;
+  }
+  return out;
+}
+
+/** Re-derive the visible golden record from all non-expired attributes. */
 export async function recomputeBusiness(admin: SupabaseClient, orgId: string, businessId: string) {
   const { data: rows } = await admin
     .from("business_attributes")
@@ -348,9 +364,10 @@ export async function recomputeBusiness(admin: SupabaseClient, orgId: string, bu
     .eq("business_id", businessId);
   const attrs = (rows ?? []) as AttributeRow[];
   const biz = resolveBusiness(attrs);
+  const { data: current } = await admin.from("businesses").select("golden_sources").eq("id", businessId).eq("org_id", orgId).single();
   const { data: locations } = await admin
     .from("business_locations")
-    .select("id, is_main, municipality, province, geo_source")
+    .select("id, is_main, municipality, province, golden_sources, name, street, house_number, postal_code, city, lat, lng")
     .eq("org_id", orgId)
     .eq("business_id", businessId)
     .order("is_main", { ascending: false });
@@ -358,30 +375,29 @@ export async function recomputeBusiness(admin: SupabaseClient, orgId: string, bu
   let main: Record<string, unknown> | null = null;
   for (const loc of locations ?? []) {
     const r = resolveLocation(attrs, loc.id);
-    const v = r.values;
-    const update = {
-      name: v.name, street: v.street, house_number: v.house_number, house_number_addition: v.house_number_addition,
-      postal_code: v.postal_code, city: v.city, lat: v.lat, lng: v.lng, phone: v.phone, website_url: v.website_url,
-      geo_source: r.sources.lat ?? null, golden_sources: r.sources,
-    };
+    const update = { ...managedUpdate(r, (loc.golden_sources ?? {}) as Record<string, string>), golden_sources: r.sources, geo_source: r.sources.lat ?? null };
     await admin.from("business_locations").update(update).eq("id", loc.id);
-    if (!main) main = { ...update, municipality: loc.municipality, province: loc.province };
+    if (!main) main = { ...loc, ...update };
   }
 
-  const v = biz.values;
-  const rating = attrs.find((a) => a.attribute === "rating" && (!a.expires_at || new Date(a.expires_at) > new Date()));
-  const reviews = attrs.find((a) => a.attribute === "review_count" && (!a.expires_at || new Date(a.expires_at) > new Date()));
+  const fields = managedUpdate(biz, (current?.golden_sources ?? {}) as Record<string, string>);
+  if ("sbi_codes" in fields && fields.sbi_codes === null) fields.sbi_codes = [];
+  if ("registration_status" in fields && fields.registration_status === null) fields.registration_status = "unknown";
+  if ("name" in fields && !fields.name) delete fields.name; // name is required
+  if ("website_url" in fields) fields.domain = extractDomain(fields.website_url as string | null);
+
+  const now = new Date();
+  const valid = (a: AttributeRow) => !a.expires_at || new Date(a.expires_at) > now;
+  const rating = attrs.find((a) => a.attribute === "rating" && valid(a));
+  const reviews = attrs.find((a) => a.attribute === "review_count" && valid(a));
   await admin
     .from("businesses")
     .update({
-      name: (v.name as string) ?? "—",
-      legal_name: v.legal_name, legal_form: v.legal_form, kvk_number: v.kvk_number,
-      sbi_codes: (v.sbi_codes as string[]) ?? [], primary_sbi_code: v.primary_sbi_code, employee_range: v.employee_range,
-      registration_status: (v.registration_status as string) ?? "unknown", industry: v.industry, description: v.description,
-      website_url: v.website_url, domain: extractDomain(v.website_url as string | null), phone: v.phone,
-      city: main?.city ?? null, postal_code: main?.postal_code ?? null, municipality: main?.municipality ?? null,
-      province: main?.province ?? null, lat: main?.lat ?? null, lng: main?.lng ?? null,
-      rating: rating ? Number(rating.value) : null, review_count: reviews ? Number(reviews.value) : null,
+      ...fields,
+      // Location-derived fields only when the business has a location record.
+      ...(main ? { city: main.city ?? null, postal_code: main.postal_code ?? null, municipality: main.municipality ?? null, province: main.province ?? null, lat: main.lat ?? null, lng: main.lng ?? null } : {}),
+      rating: rating ? Number(rating.value) : null,
+      review_count: reviews ? Number(reviews.value) : null,
       golden_sources: biz.sources,
     })
     .eq("id", businessId)

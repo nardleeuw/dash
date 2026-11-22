@@ -66,3 +66,11 @@ describe("buildRecord", () => {
     expect(built.location.geoExpiresAt).toBeNull();
   });
 });
+
+describe("managedUpdate", () => {
+  it("only touches attribute-managed fields and nulls fields whose source vanished", async () => {
+    const { managedUpdate } = await import("@/server/discovery/import");
+    const out = managedUpdate({ values: { name: "A", phone: null, industry: null }, sources: { name: "kvk" } }, { name: "kvk", phone: "google_places" });
+    expect(out).toEqual({ name: "A", phone: null }); // industry was never managed → untouched
+  });
+});

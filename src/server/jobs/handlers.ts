@@ -25,4 +25,5 @@ export const handlers: HandlerMap = {
     return outcomes;
   },
   "retention/purge": async () => purgeExpiredData(),
+  "research/business.requested": async (data) => (await import("@/server/research/run")).runResearch(data),
 };

@@ -58,7 +58,7 @@ importers:
         version: 10.6.1
       openai:
         specifier: ^7.62.0
-        version: 7.62.0(undici@7.30.2)(zod@4.6.7)
+        version: 7.62.0(undici@8.13.1)(zod@4.6.7)
       radix-ui:
         specifier: ^1.8.1
         version: 1.8.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -92,6 +92,9 @@ importers:
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
+      undici:
+        specifier: ^8.13.1
+        version: 8.13.1
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -4791,6 +4794,10 @@ packages:
     resolution: {integrity: sha512-mLyPQnHwUxaM/rideoK/+KL8DaAJLRl4aBCfmX444aCSLnIaomqPLtNRe2jdCYcsk5wZzXrDIQC8ZeYNRAYyIA==}
     engines: {node: '>=20.18.1'}
 
+  undici@8.13.1:
+    resolution: {integrity: sha512-Kt7EaPjh0s93lJH/PmW3d5rhkcpUa6fS3jqZ7+YGxNd9L7Xy/i827xe4C2uhhq+pJebM4tQOl5AgHmW11G5Skg==}
+    engines: {node: '>=22.19.0'}
+
   unrs-resolver@1.13.0:
     resolution: {integrity: sha512-mcPQo9Vm6kXd84d/WqMiYBi2CcA57QHBX/ev5PoUEb8b2oQzUvJ6xYsfseQblnCncgnVmCZGWiFwK7KkS5JZJA==}
 
@@ -9199,9 +9206,9 @@ snapshots:
 
   on-exit-leak-free@2.1.2: {}
 
-  openai@7.62.0(undici@7.30.2)(zod@4.6.7):
+  openai@7.62.0(undici@8.13.1)(zod@4.6.7):
     optionalDependencies:
-      undici: 7.30.2
+      undici: 8.13.1
       zod: 4.6.7
 
   optionator@0.9.4:
@@ -10011,6 +10018,8 @@ snapshots:
   undici-types@6.21.0: {}
 
   undici@7.30.2: {}
+
+  undici@8.13.1: {}
 
   unrs-resolver@1.13.0:
     dependencies:

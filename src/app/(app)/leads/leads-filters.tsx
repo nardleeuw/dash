@@ -35,7 +35,7 @@ export function LeadsFilters(props: { industries: { key: string; label: string }
   }, [q]);
 
   const statusEntries = Object.entries(t.leadStatus);
-  const advancedCount = ["website", "email", "phone", "multi", "nonmailing", "minScore"].filter((k) => sp.get(k)).length;
+  const advancedCount = ["website", "email", "phone", "multi", "nonmailing", "minScore", "researched", "nobooking", "notmobile", "nohttps", "noform", "outdated"].filter((k) => sp.get(k)).length;
   const anyFilter = [...sp.keys()].some((k) => k !== "page" && k !== "sort");
 
   return (
@@ -72,7 +72,23 @@ export function LeadsFilters(props: { industries: { key: string; label: string }
             {t.meta.locale === "nl" ? "Verberg KVK non-mailing" : "Hide KVK non-mailing"}
             <Switch checked={sp.get("nonmailing") === "0"} onCheckedChange={(c) => set("nonmailing", c ? "0" : null)} />
           </label>
-          <div className="space-y-2 pt-1">
+          <div className="space-y-3 border-t pt-3">
+            <p className="text-xs font-medium text-muted-foreground">{t.research.signals}</p>
+            {[
+              ["researched", t.research.filters.researched],
+              ["nobooking", t.research.filters.noBooking],
+              ["notmobile", t.research.filters.notMobile],
+              ["nohttps", t.research.filters.noHttps],
+              ["noform", t.research.filters.noContactForm],
+              ["outdated", t.research.filters.outdated],
+            ].map(([k, label]) => (
+              <label key={k} className="flex items-center justify-between text-sm">
+                {label}
+                <Switch checked={sp.get(k) === "1"} onCheckedChange={(c) => set(k, c ? "1" : null)} />
+              </label>
+            ))}
+          </div>
+          <div className="space-y-2 border-t pt-3">
             <div className="flex justify-between text-sm"><span>{t.leads.minScore}</span><span className="tabular text-muted-foreground">{sp.get("minScore") ?? 0}</span></div>
             <Slider min={0} max={100} step={5} defaultValue={[Number(sp.get("minScore") ?? 0)]} onValueCommit={(v) => set("minScore", v[0] > 0 ? String(v[0]) : null)} />
           </div>

@@ -16,12 +16,14 @@ import { industryLabel } from "@/config/industries";
 import { formatPostalCode } from "@/server/discovery/normalize";
 import { ProfileControls } from "./profile-controls";
 import { AddContactButton } from "./add-contact";
+import { FindContactsButton, VerifyEmailButton } from "./research-buttons";
 import { ProfileExtraTabs, ProfileExtraTriggers } from "./extra-tabs";
 
 type Attr = { attribute: string; provider: string; retrieved_at: string; expires_at: string | null; location_id: string | null };
 
-export default async function BusinessProfilePage({ params }: PageProps<"/leads/[id]">) {
+export default async function BusinessProfilePage({ params, searchParams }: PageProps<"/leads/[id]">) {
   const { id } = await params;
+  const { tab } = await searchParams;
   const [ws, t] = await Promise.all([getWorkspace(), getDictionary()]);
   const supabase = await createClient();
   const { data: b } = await supabase.from("businesses").select("*").eq("id", id).eq("org_id", ws.org.id).maybeSingle();
@@ -102,7 +104,7 @@ export default async function BusinessProfilePage({ params }: PageProps<"/leads/
         <Alert variant="destructive"><ShieldAlert /><AlertDescription className="text-foreground">{p.nonMailingWarning}</AlertDescription></Alert>
       )}
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue={typeof tab === "string" ? tab : "overview"}>
         <TabsList>
           <TabsTrigger value="overview">{p.overview}</TabsTrigger>
           <ProfileExtraTriggers />
@@ -159,7 +161,12 @@ export default async function BusinessProfilePage({ params }: PageProps<"/leads/
             <Card>
               <CardHeader className="flex-row items-center justify-between">
                 <CardTitle>{p.contacts}</CardTitle>
-                {ws.role !== "viewer" && <AddContactButton businessId={b.id} />}
+                {ws.role !== "viewer" && (
+                  <div className="flex gap-2">
+                    {b.domain && <FindContactsButton businessId={b.id} />}
+                    <AddContactButton businessId={b.id} />
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-2 pt-3">
                 {(contacts.data ?? []).length === 0 && <p className="text-sm text-muted-foreground">{p.noContacts}</p>}
@@ -175,6 +182,7 @@ export default async function BusinessProfilePage({ params }: PageProps<"/leads/
                         <span className="text-foreground">{c.email}</span>
                         <Badge variant="outline">{c.email_type}</Badge>
                         {c.email_verification !== "unknown" && <Badge variant={c.email_verification === "valid" ? "success" : c.email_verification === "invalid" ? "destructive" : "warning"}>{c.email_verification}</Badge>}
+                        {c.email_verification === "unknown" && ws.role !== "viewer" && <VerifyEmailButton contactId={c.id} businessId={b.id} />}
                       </p>
                     )}
                   </div>
@@ -208,7 +216,7 @@ export default async function BusinessProfilePage({ params }: PageProps<"/leads/
           </div>
         </TabsContent>
 
-        <ProfileExtraTabs businessId={b.id} />
+        <ProfileExtraTabs businessId={b.id} canWrite={ws.role !== "viewer"} />
 
         <TabsContent value="sources">
           <Card className="gap-0 overflow-hidden p-0">

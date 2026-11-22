@@ -33,6 +33,11 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
   const hasPhone = str(sp.phone) === "1";
   const multi = str(sp.multi) === "1";
   const hideNonMailing = str(sp.nonmailing) === "0";
+  const digital: [string, string, string][] = [
+    ["nobooking", "booking", "false"], ["notmobile", "mobile", "false"], ["nohttps", "https", "false"],
+    ["noform", "contact_form", "false"], ["outdated", "outdated", "true"],
+  ];
+  const researched = str(sp.researched) === "1";
   const page = Math.max(1, Number(str(sp.page) ?? 1) || 1);
 
   const supabase = await createClient();
@@ -56,6 +61,8 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
   if (multi) query = query.gt("location_count", 1);
   if (hideNonMailing) query = query.eq("kvk_non_mailing", false);
   if (hasEmail) query = query.not("contacts.email", "is", null);
+  for (const [param, key, value] of digital) if (str(sp[param]) === "1") query = query.eq(`digital_signals->>${key}`, value);
+  if (researched) query = query.not("last_researched_at", "is", null);
   if (list) query = query.eq("lead_list_members.list_id", list);
 
   const sort = str(sp.sort) ?? "created";

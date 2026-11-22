@@ -6,7 +6,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 |---|---|---|
 | 1 Foundation | Next.js 16 app, Supabase schema + RLS, auth, onboarding, workspaces, UI shell, i18n NL/EN, docs | ✅ |
 | 2 Discovery | KVK / Google Places / OSM / PDOK adapters, search filters, table + map, import, dedup, provenance, saved searches | ✅ |
-| 3 Intelligence | Hunter, website crawler + signals, AI research, opportunities, lead scoring | ⬜ |
+| 3 Intelligence | Hunter, website crawler + signals, AI research, opportunities, lead scoring | ✅ |
 | 4 Email generation | Agency profiles, batch generation via Inngest, fact-check, review/edit/approve UI | ⬜ |
 | 5 Campaigns | Mail adapters, eligibility gate, queue, schedule, rate limits, follow-ups, unsubscribe | ⬜ |
 | 6 Inbox & CRM | Reply sync + matching, AI categorisation, pipeline, tasks, notes | ⬜ |
@@ -63,3 +63,32 @@ import 3 → lead database → profile — no console errors.
 the basisprofiel after import); `overpass-api.de` is unreachable from this
 sandbox (adapter verified with fixtures); Google Places runs in mock mode
 until the Maps key is added; KVK test environment returns test companies only.
+
+### Phase 3 — Business intelligence
+**Implemented:** Hunter adapter (domain search, verifier; live + mock) with
+contact provenance and auto-suppression of invalid addresses; SSRF-safe
+fetcher (public unicast IPs only, checked pre-request and at connect time,
+manual redirect re-validation, port/credential/size/time limits); polite
+crawler (robots.txt, ≤5 high-value pages); HTML extraction; deterministic
+signals with evidence (HTTPS, viewport, booking/ordering/chat providers,
+contact/quote forms, analytics, CMS, copyright year); OpenAI structured-output
+client (`store: false`, cost logging, quota errors surfaced); research prompt
+with prompt-injection rules and untrusted-content delimiters; post-validation
+(observations must quote crawled text verbatim, otherwise demoted to
+hypotheses; opportunities verified only with surviving evidence); rule-based
+opportunities phrased as "not found on the N pages analysed"; explainable
+lead scoring with configurable weights + target provinces and re-scoring;
+website verification (KVK number / postcode on site); research UI (queue,
+stats, auto-refresh, scoring dialog), profile research tab (summary,
+opportunities with evidence, verified observations, labelled hypotheses, score
+breakdown, signals, pages), Hunter/verify buttons, bulk research, digital
+presence filters in the lead database.
+
+**Tests:** 48 unit (+ extraction, signals, validation, injection, scoring,
+SSRF, crawler on a local site incl. robots.txt) and 28 DB (+ full research run
+with a hidden prompt injection, Hunter enrichment, re-scoring) — all passing.
+
+**Credentials:** OpenAI key is valid but the account returns
+`insufficient_quota` → AI runs in labelled mock mode locally until billing is
+enabled; the deterministic analysis runs regardless. Hunter free plan
+(50 searches / 100 verifications).

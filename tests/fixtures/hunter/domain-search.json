@@ -1,0 +1,138 @@
+{
+  "data": {
+    "domain": "voorbeeld.nl",
+    "disposable": false,
+    "webmail": false,
+    "accept_all": false,
+    "pattern": "{first}",
+    "organization": "Voorbeeld BV",
+    "linked_domains": [],
+    "emails": [
+      {
+        "value": "jan@voorbeeld.nl",
+        "type": "personal",
+        "source_type": "found",
+        "provenance": "found",
+        "confidence": 99,
+        "sources": [
+          {
+            "domain": "voorbeeld.nl",
+            "uri": "https://voorbeeld.nl/over-ons",
+            "extracted_on": "2025-10-30",
+            "last_seen_on": "2026-11-03",
+            "still_on_page": true
+          },
+          {
+            "domain": "voorbeeld.nl",
+            "uri": "https://voorbeeld.nl/over-ons",
+            "extracted_on": "2025-03-20",
+            "last_seen_on": "2026-10-27",
+            "still_on_page": true
+          }
+        ],
+        "first_name": "Jan",
+        "last_name": "de Vries",
+        "position": "Cofounder",
+        "position_raw": "Cofounder",
+        "seniority": "executive",
+        "department": "executive",
+        "decision_maker": true,
+        "linkedin": null,
+        "twitter": null,
+        "phone_number": null,
+        "verification": {
+          "date": "2026-10-24",
+          "status": "valid"
+        }
+      },
+      {
+        "value": "sanne@voorbeeld.nl",
+        "type": "personal",
+        "source_type": "found",
+        "provenance": "found",
+        "confidence": 99,
+        "sources": [
+          {
+            "domain": "voorbeeld.nl",
+            "uri": "https://voorbeeld.nl/over-ons",
+            "extracted_on": "2025-10-30",
+            "last_seen_on": "2026-11-03",
+            "still_on_page": true
+          },
+          {
+            "domain": "voorbeeld.nl",
+            "uri": "https://voorbeeld.nl/over-ons",
+            "extracted_on": "2026-10-24",
+            "last_seen_on": "2026-10-25",
+            "still_on_page": true
+          }
+        ],
+        "first_name": "Sanne",
+        "last_name": "Bakker",
+        "position": "Customer Success Director",
+        "position_raw": "Head of Customer Success",
+        "seniority": "executive",
+        "department": "support",
+        "decision_maker": true,
+        "linkedin": null,
+        "twitter": null,
+        "phone_number": null,
+        "verification": {
+          "date": "2026-11-08",
+          "status": "valid"
+        }
+      },
+      {
+        "value": "info@voorbeeld.nl",
+        "type": "generic",
+        "source_type": "found",
+        "provenance": "found",
+        "confidence": 98,
+        "sources": [
+          {
+            "domain": "voorbeeld.nl",
+            "uri": "https://voorbeeld.nl/over-ons",
+            "extracted_on": "2025-10-30",
+            "last_seen_on": "2026-11-03",
+            "still_on_page": true
+          },
+          {
+            "domain": "voorbeeld.nl",
+            "uri": "https://voorbeeld.nl/over-ons",
+            "extracted_on": "2025-12-25",
+            "last_seen_on": "2026-10-25",
+            "still_on_page": true
+          }
+        ],
+        "first_name": null,
+        "last_name": null,
+        "position": "Cofounder",
+        "position_raw": "Cofounder",
+        "seniority": "executive",
+        "department": "executive",
+        "decision_maker": true,
+        "linkedin": null,
+        "twitter": null,
+        "phone_number": null,
+        "verification": {
+          "date": "2026-10-24",
+          "status": "valid"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "results": 33,
+    "results_approximate": false,
+    "limit": 3,
+    "offset": 0,
+    "params": {
+      "domain": "voorbeeld.nl",
+      "company": null,
+      "type": null,
+      "seniority": null,
+      "department": null,
+      "decision_maker": null
+    }
+  }
+}
