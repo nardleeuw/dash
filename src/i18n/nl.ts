@@ -55,6 +55,7 @@ export const nl = {
       forbidden: "Je hebt geen rechten voor deze actie.",
       validation: "Controleer de ingevulde velden.",
       notFound: "Niet gevonden.",
+      rate_limited: "Te veel verzoeken. Probeer het over een minuut opnieuw.",
       credits: "Je tegoed voor deze maand is op. Upgrade je abonnement of koop extra credits.",
     },
   },
@@ -473,7 +474,7 @@ export const nl = {
   },
   settings: {
     title: "Instellingen",
-    tabs: { organization: "Organisatie", team: "Team", compliance: "Compliance", profile: "Profiel" },
+    tabs: { organization: "Organisatie", team: "Team", compliance: "Compliance", audit: "Auditlog", profile: "Profiel" },
     orgName: "Naam werkruimte",
     legalName: "Statutaire naam (afzender)",
     kvkNumber: "KVK-nummer",

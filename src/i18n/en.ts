@@ -56,6 +56,7 @@ export const en: Dictionary = {
       forbidden: "You don't have permission for this action.",
       validation: "Please check the highlighted fields.",
       notFound: "Not found.",
+      rate_limited: "Too many requests. Please try again in a minute.",
       credits: "You've used this month's allowance. Upgrade your plan or buy extra credits.",
     },
   },
@@ -474,7 +475,7 @@ export const en: Dictionary = {
   },
   settings: {
     title: "Settings",
-    tabs: { organization: "Organisation", team: "Team", compliance: "Compliance", profile: "Profile" },
+    tabs: { organization: "Organisation", team: "Team", compliance: "Compliance", audit: "Audit log", profile: "Profile" },
     orgName: "Workspace name",
     legalName: "Legal name (sender)",
     kvkNumber: "KVK number",

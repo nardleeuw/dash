@@ -86,7 +86,8 @@ async function applySubscription(sub: Stripe.Subscription) {
   };
   let q = admin.from("subscriptions").update(patch);
   q = orgId ? q.eq("org_id", orgId) : q.eq("stripe_customer_id", patch.stripe_customer_id as string);
-  await q;
+  const { error } = await q;
+  if (error) throw new Error(`subscription update failed: ${error.message}`);
 }
 
 /** Process a verified Stripe event exactly once. */

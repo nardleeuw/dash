@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_ENV: development
+      MOCK_PROVIDERS: kvk,google_places,osm,hunter,openai,pagespeed,stripe
+      APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local Supabase
+        run: supabase start -x studio,imgproxy,vector,logflare,edge-runtime,realtime,supavisor
+      - name: Write .env for tests
+        run: |
+          supabase status -o env > /tmp/sb.env
+          source /tmp/sb.env
+          cat > .env <<ENV
+          APP_URL=http://localhost:3000
+          APP_ENV=development
+          MOCK_PROVIDERS=kvk,google_places,osm,hunter,openai,pagespeed,stripe
+          NEXT_PUBLIC_SUPABASE_URL=$API_URL
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY
+          SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY
+          ENCRYPTION_KEY=$(openssl rand -base64 32)
+          UNSUBSCRIBE_SECRET=$(openssl rand -hex 32)
+          CRON_SECRET=$(openssl rand -hex 32)
+          ENV
+      - run: pnpm test:db
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: |
+          pnpm start &
+          npx wait-on http://localhost:3000/login --timeout 120000
+          E2E_BASE_URL=http://localhost:3000 pnpm test:e2e

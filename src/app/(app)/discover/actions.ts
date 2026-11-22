@@ -10,11 +10,13 @@ import { dispatch } from "@/server/jobs/dispatch";
 import { CreditsExhaustedError } from "@/server/usage";
 import { fail, ok, safeAction, type ActionResult } from "@/server/actions";
 import { getLocale } from "@/i18n/server";
+import { rateLimit } from "@/server/rate-limit";
 import { cursorsSchema, importGroupsSchema, searchFiltersSchema } from "@/lib/discovery-schema";
 
 export async function searchAction(filters: unknown, cursors: unknown): Promise<ActionResult<Omit<SearchResponse, "merged"> & { existing: Record<string, string> }>> {
   return safeAction(async () => {
     const ws = await requireRole("sales_rep");
+    await rateLimit(`search:${ws.org.id}`, 60);
     const f = searchFiltersSchema.parse(filters);
     const c = cursorsSchema.parse(cursors);
     try {

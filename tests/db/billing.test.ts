@@ -70,18 +70,33 @@ describe("subscriptions & credits", () => {
   it("applies subscription updates and payment failures", async () => {
     const { POST } = await import("@/app/api/webhooks/stripe/route");
     const now = Math.floor(Date.now() / 1000);
+    const customer = `cus_test_${Date.now()}`;
     const sub = {
-      id: "sub_test_1", object: "subscription", customer: "cus_test_1", status: "active", cancel_at_period_end: false, metadata: { orgId },
+      id: `sub_test_${Date.now()}`, object: "subscription", customer, status: "active", cancel_at_period_end: false, metadata: { orgId },
       items: { data: [{ price: { id: "price_test_growth" }, current_period_start: now, current_period_end: now + 30 * 86_400 }] },
     };
     expect((await POST(signedRequest({ id: `evt_sub_${Date.now()}`, object: "event", type: "customer.subscription.updated", data: { object: sub } }))).status).toBe(200);
     const { data: s1 } = await admin.from("subscriptions").select("plan_key, status, stripe_customer_id").eq("org_id", orgId).single();
-    expect(s1).toEqual({ plan_key: "growth", status: "active", stripe_customer_id: "cus_test_1" });
-    await POST(signedRequest({ id: `evt_inv_${Date.now()}`, object: "event", type: "invoice.payment_failed", data: { object: { id: "in_1", object: "invoice", customer: "cus_test_1" } } }));
+    expect(s1).toEqual({ plan_key: "growth", status: "active", stripe_customer_id: customer });
+    await POST(signedRequest({ id: `evt_inv_${Date.now()}`, object: "event", type: "invoice.payment_failed", data: { object: { id: "in_1", object: "invoice", customer } } }));
     const { data: s2 } = await admin.from("subscriptions").select("status").eq("org_id", orgId).single();
     expect(s2!.status).toBe("past_due");
     // A past-due workspace cannot consume credits.
     const { data } = await admin.rpc("consume_credits", { p_org: orgId, p_kind: "search", p_quantity: 1, p_idempotency_key: `pd-${Date.now()}` });
     expect(data).toBe(false);
+  });
+});
+
+describe("rate limiter", () => {
+  it("allows up to the maximum per window, then blocks", async () => {
+    const key = `test:${Date.now()}`;
+    const results: boolean[] = [];
+    for (let i = 0; i < 4; i++) {
+      const { data } = await admin.rpc("rate_limit_hit", { p_key: key, p_window_seconds: 60, p_max: 3 });
+      results.push(data as boolean);
+    }
+    expect(results).toEqual([true, true, true, false]);
+    const denied = await owner.client.rpc("rate_limit_hit", { p_key: key, p_window_seconds: 60, p_max: 3 });
+    expect(denied.error).not.toBeNull(); // not callable by end users
   });
 });

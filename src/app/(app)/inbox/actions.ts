@@ -10,6 +10,7 @@ import { ingestInbound } from "@/server/inbox/ingest";
 import { syncAllMailboxes } from "@/server/inbox/sync";
 import { isProduction } from "@/server/env";
 import { SendError } from "@/server/sending/providers/types";
+import { rateLimit } from "@/server/rate-limit";
 
 const uuid = z.string().uuid();
 
@@ -37,6 +38,7 @@ export async function draftReplyAction(conversationId: unknown): Promise<ActionR
   return safeAction(async () => {
     const ws = await requireRole("sales_rep");
     const id = uuid.parse(conversationId);
+    await rateLimit(`draft:${ws.org.id}`, 30);
     const supabase = await createClient();
     const { data: conv } = await supabase.from("conversations").select("id").eq("id", id).eq("org_id", ws.org.id).maybeSingle();
     if (!conv) return fail("notFound");

@@ -9,11 +9,13 @@ import { requestResearch, rescoreOrganization } from "@/server/research/run";
 import { findContactsWithHunter, verifyContactEmail } from "@/server/research/contacts";
 import { CreditsExhaustedError } from "@/server/usage";
 import { DEFAULT_WEIGHTS } from "@/server/scoring/score";
+import { rateLimit } from "@/server/rate-limit";
 
 export async function startResearchAction(businessIds: unknown): Promise<ActionResult<{ queued: number; skipped: number }>> {
   return safeAction(async () => {
     const ws = await requireRole("sales_rep");
     const ids = z.array(z.string().uuid()).min(1).max(500).parse(businessIds);
+    await rateLimit(`research:${ws.org.id}`, 20);
     const res = await requestResearch(ws.org.id, ws.user.id, ids);
     revalidatePath("/research");
     return ok(res);

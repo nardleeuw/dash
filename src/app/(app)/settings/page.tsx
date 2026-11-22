@@ -7,7 +7,7 @@ import { readComplianceSettings } from "@/server/compliance/eligibility";
 import { OrganizationForm, TeamPanel, CompliancePanel, ProfileForm } from "./forms";
 
 export const metadata = { title: "Instellingen" };
-const TABS = ["organization", "team", "compliance", "profile"] as const;
+const TABS = ["organization", "team", "compliance", "audit", "profile"] as const;
 
 export default async function SettingsPage({ searchParams }: PageProps<"/settings">) {
   const [ws, t] = await Promise.all([getWorkspace(), getDictionary()]);
@@ -50,6 +50,29 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         requests={requests ?? []}
         role={ws.role}
       />
+    );
+  } else if (tab === "audit") {
+    const { data: logs } = hasMinRole(ws.role, "admin")
+      ? await supabase.from("audit_logs").select("id, action, entity_type, entity_id, metadata, created_at, actor_user_id, users(full_name, email)").eq("org_id", ws.org.id).order("created_at", { ascending: false }).limit(200)
+      : { data: [] };
+    body = (
+      <div className="overflow-hidden rounded-xl border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/60 text-left text-xs text-muted-foreground"><tr><th className="px-3 py-2">{t.common.created}</th><th className="px-3 py-2">Actor</th><th className="px-3 py-2">{t.common.actions}</th><th className="px-3 py-2">Entity</th><th className="px-3 py-2">Details</th></tr></thead>
+          <tbody>
+            {(logs ?? []).map((l) => (
+              <tr key={l.id} className="border-t align-top">
+                <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{new Date(l.created_at).toLocaleString(t.meta.dateLocale)}</td>
+                <td className="px-3 py-2">{(l.users as unknown as { full_name: string | null; email: string } | null)?.full_name ?? (l.users as unknown as { email: string } | null)?.email ?? "system"}</td>
+                <td className="px-3 py-2">{l.action}</td>
+                <td className="px-3 py-2">{l.entity_type}</td>
+                <td className="max-w-md truncate px-3 py-2 font-mono text-xs text-muted-foreground">{JSON.stringify(l.metadata)}</td>
+              </tr>
+            ))}
+            {(logs ?? []).length === 0 && <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">—</td></tr>}
+          </tbody>
+        </table>
+      </div>
     );
   } else {
     body = <ProfileForm initial={{ full_name: ws.user.fullName ?? "", locale: ws.user.locale }} />;

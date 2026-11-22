@@ -11,7 +11,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 5 Campaigns | Mail adapters, eligibility gate, queue, schedule, rate limits, follow-ups, unsubscribe | ✅ |
 | 6 Inbox & CRM | Reply sync + matching, AI categorisation, pipeline, tasks, notes | ✅ |
 | 7 Analytics & billing | Dashboard, usage, Stripe checkout/portal/webhooks, limits | ✅ |
-| 8 Production readiness | Security review, e2e tests, deployment (Vercel + Supabase) | ⬜ |
+| 8 Production readiness | Security review, e2e tests, deployment (Vercel + Supabase) | 🟡 |
 
 ## Phase reports
 
@@ -195,3 +195,19 @@ per-client stats; per-client profile editing).
 **Tests:** 74 unit and 51 DB (+ analytics access control, trial expiry,
 Stripe webhook signature/idempotency/credit grant/subscription update/payment
 failure, seat limit) — all passing.
+
+### Phase 8 — Production readiness
+**Implemented:** production build verified (34 routes); Postgres rate limiter
+applied to sensitive actions and public endpoints; security headers (CSP,
+HSTS, COOP, etc.); error, not-found, global-error and loading states; audit
+log view; Playwright end-to-end suite (sign-up → profile → identity → discover
+→ import → generate → review → approve; auth redirect; headers); GitHub
+Actions CI (lint, typecheck, unit, local Supabase + DB tests, build, e2e);
+`vercel.json` (fra1 + cron fallback that steps aside when Inngest is on);
+`scripts/deploy-supabase.mjs` (Management API); deployment and security docs.
+
+**Tests:** 74 unit · 52 DB · 3 e2e — all passing; lint clean; `pnpm build` passes.
+
+**Not done (blocked):** actual deployment — the Supabase (401) and Vercel
+(403) tokens were rejected; no GitHub repository was provided yet, so nothing
+has been pushed. OpenAI account has no quota (mock writer active locally).

@@ -31,6 +31,7 @@ export async function safeAction<T>(fn: () => Promise<ActionResult<T>>): Promise
       return fail("validation", fieldErrors);
     }
     if (err instanceof ForbiddenError) return fail("forbidden");
+    if (err instanceof Error && err.name === "RateLimitedError") return fail("rate_limited");
     // Next.js redirect()/notFound() must propagate.
     if (err && typeof err === "object" && "digest" in err && typeof (err as { digest: unknown }).digest === "string" &&
         ((err as { digest: string }).digest.startsWith("NEXT_REDIRECT") || (err as { digest: string }).digest.startsWith("NEXT_HTTP_ERROR"))) {

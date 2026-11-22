@@ -9,6 +9,7 @@ import { encryptJson } from "@/server/crypto";
 import { SmtpProvider } from "@/server/sending/providers/smtp";
 import { isProduction } from "@/server/env";
 import { validateUrlShape } from "@/server/research/safe-fetch";
+import { rateLimit } from "@/server/rate-limit";
 
 const smtpSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -28,7 +29,8 @@ function safeHost(host: string) {
 
 export async function testSmtpAction(input: unknown): Promise<ActionResult<null>> {
   return safeAction(async () => {
-    await requireRole("admin");
+    const ws = await requireRole("admin");
+    await rateLimit(`smtp-test:${ws.org.id}`, 10, 600);
     const p = smtpSchema.parse(input);
     safeHost(p.smtpHost);
     const provider = new SmtpProvider({ smtp: { host: p.smtpHost, port: p.smtpPort, secure: p.smtpPort === 465 }, imap: null, username: p.username, password: p.password });

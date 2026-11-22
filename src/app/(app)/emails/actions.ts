@@ -10,6 +10,7 @@ import { factCheckEmail } from "@/server/emails/fact-check";
 import { loadAgencyProfile } from "@/server/agency";
 import { leadIdsForFilter } from "@/server/leads/query";
 import { evaluateEmailCompliance } from "@/server/compliance/evaluate";
+import { rateLimit } from "@/server/rate-limit";
 
 const uuid = z.string().uuid();
 const uuids = z.array(uuid).min(1).max(1000);
@@ -17,6 +18,7 @@ const uuids = z.array(uuid).min(1).max(1000);
 export async function createBatchAction(input: unknown): Promise<ActionResult<{ batchId: string; queued: number; skipped: number }>> {
   return safeAction(async () => {
     const ws = await requireRole("sales_rep");
+    await rateLimit(`batch:${ws.org.id}`, 10);
     const p = z.object({
       scope: z.enum(["selection", "filter", "list"]),
       businessIds: z.array(uuid).max(1000).optional(),
