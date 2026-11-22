@@ -8,7 +8,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 2 Discovery | KVK / Google Places / OSM / PDOK adapters, search filters, table + map, import, dedup, provenance, saved searches | ✅ |
 | 3 Intelligence | Hunter, website crawler + signals, AI research, opportunities, lead scoring | ✅ |
 | 4 Email generation | Agency profiles, batch generation via Inngest, fact-check, review/edit/approve UI | ✅ |
-| 5 Campaigns | Mail adapters, eligibility gate, queue, schedule, rate limits, follow-ups, unsubscribe | ⬜ |
+| 5 Campaigns | Mail adapters, eligibility gate, queue, schedule, rate limits, follow-ups, unsubscribe | ✅ |
 | 6 Inbox & CRM | Reply sync + matching, AI categorisation, pipeline, tasks, notes | ⬜ |
 | 7 Analytics & billing | Dashboard, usage, Stripe checkout/portal/webhooks, limits | ⬜ |
 | 8 Production readiness | Security review, e2e tests, deployment (Vercel + Supabase) | ⬜ |
@@ -118,3 +118,37 @@ gate) and 31 DB (+ batch of 3 individual emails, no duplicates, revisions,
 compliance becomes eligible after documenting a basis and blocks again after an
 objection) — all passing. Browser: profile → import → generate → batch
 progress → review → editor → approve.
+
+### Phase 5 — Campaign management & sending
+**Implemented:** AES-256-GCM secret storage; mail provider adapters (SMTP +
+IMAP via nodemailer/imapflow, Gmail API, Microsoft Graph with OAuth start/
+callback + signed state + token refresh, mock provider); inbound parsing with
+bounce (DSN) and auto-reply detection; message composer (single recipient,
+sender identity, privacy footer, signed unsubscribe link, RFC 8058 one-click
+`List-Unsubscribe` + `List-Unsubscribe-Post`, threading for follow-ups);
+timezone-aware sending windows, spread scheduling, per-account hourly/daily
+caps and minimum gap, per-campaign daily cap; scheduler tick
+(`claim_due_recipients` with SKIP LOCKED, send-time compliance gate, one
+outbound row per recipient+step, unknown outcomes never auto-resent,
+permanent errors → bounce + suppression, auth errors → account flagged,
+retries with backoff); campaigns (draft → launch with gate → pause/resume/
+cancel), recipients from approved emails/batches/lists with 90-day
+recent-contact protection, follow-up sequences with AI generation and review
+before sending, stop on reply/unsubscribe/objection/bounce/suppression/cancel;
+unsubscribe page + one-click endpoint; signed delivery-event webhook
+(idempotent); Vercel Cron fallback and local scheduler; integrations page
+(provider status, SMTP/IMAP with connection test, OAuth connect, demo
+account, limits); settings (organisation identity, team invitations/roles,
+compliance rules, privacy footer versions, permissions with evidence upload to
+private storage, suppression list, GDPR access/erasure/objection requests).
+
+**Tests:** 72 unit (+ DST-aware windows, scheduling, composition, token
+signing/tampering, encryption, inbound parsing) and 39 DB (+ full campaign:
+gate on launch, send with footer/header, no duplicate step, follow-up awaits
+approval, unsubscribe stops sequence, hard bounce suppression, 90-day
+protection, pause/cancel) — all passing.
+
+**Limitations:** Gmail/Microsoft OAuth not exercised live (needs OAuth apps);
+Graph cannot set `List-Unsubscribe` (footer link remains). No live SMTP send
+was performed (no mailbox credentials provided, by design no real emails in
+tests).
