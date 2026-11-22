@@ -1,0 +1,54 @@
+{
+  "kvkNummer": "68750110",
+  "rsin": "857587973",
+  "statutaireNaam": "Test BV Donald",
+  "naam": "Test BV Donald",
+  "startdatum": "20170519",
+  "vestigingen": [
+    {
+      "vestigingsnummer": "000037178598",
+      "eersteHandelsnaam": "Test BV Donald",
+      "handelsnamen": [
+        {
+          "naam": "Test BV Donald",
+          "volgorde": 0
+        }
+      ],
+      "links": [
+        {
+          "rel": "vestigingsprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/vestigingsprofielen/000037178598",
+          "title": "Gegevens van een specifieke vestiging van een inschrijving in het Handelsregister."
+        }
+      ]
+    },
+    {
+      "vestigingsnummer": "000037178601",
+      "eersteHandelsnaam": "Test BV Donald Nevenvestiging",
+      "handelsnamen": [
+        {
+          "naam": "Test BV Donald Nevenvestiging",
+          "volgorde": 0
+        }
+      ],
+      "links": [
+        {
+          "rel": "vestigingsprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/vestigingsprofielen/000037178601",
+          "title": "Gegevens van een specifieke vestiging van een inschrijving in het Handelsregister."
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "rel": "self",
+      "href": "https://api.kvk.nl/test/api/v1/naamgevingen/kvknummer/68750110"
+    },
+    {
+      "rel": "basisprofiel",
+      "href": "https://api.kvk.nl/test/api/v1/basisprofielen/68750110",
+      "title": "Basisgegevens van een inschrijving in het Handelsregister."
+    }
+  ]
+}

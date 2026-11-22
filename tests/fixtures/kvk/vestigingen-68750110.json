@@ -1,0 +1,50 @@
+{
+  "kvkNummer": "68750110",
+  "aantalCommercieleVestigingen": 2,
+  "aantalNietCommercieleVestigingen": 0,
+  "totaalAantalVestigingen": 2,
+  "vestigingen": [
+    {
+      "vestigingsnummer": "000037178598",
+      "eersteHandelsnaam": "Test BV Donald",
+      "indHoofdvestiging": "Ja",
+      "indAdresAfgeschermd": "Nee",
+      "indCommercieleVestiging": "Ja",
+      "volledigAdres": "Hizzaarderlaan 3 A                                 8823SJ Lollum",
+      "links": [
+        {
+          "rel": "self",
+          "href": "https://api.kvk.nl/test/api/v1/basisprofielen/68750110/hoofdvestiging"
+        },
+        {
+          "rel": "vestigingsprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/vestigingsprofielen/000037178598"
+        }
+      ]
+    },
+    {
+      "vestigingsnummer": "000037178601",
+      "eersteHandelsnaam": "Test BV Donald Nevenvestiging",
+      "indHoofdvestiging": "Nee",
+      "indAdresAfgeschermd": "Nee",
+      "indCommercieleVestiging": "Ja",
+      "volledigAdres": "Kippenhok 1581346628486 4794                                 4794QQ Nieuwerbrug",
+      "links": [
+        {
+          "rel": "vestigingsprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/vestigingsprofielen/000037178601"
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "rel": "self",
+      "href": "https://api.kvk.nl/test/api/v1/basisprofielen/68750110/vestigingen"
+    },
+    {
+      "rel": "basisprofiel",
+      "href": "https://api.kvk.nl/test/api/v1/basisprofielen/68750110"
+    }
+  ]
+}

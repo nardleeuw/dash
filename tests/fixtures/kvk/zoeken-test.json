@@ -1,0 +1,191 @@
+{
+  "pagina": 1,
+  "resultatenPerPagina": 10,
+  "totaal": 9,
+  "resultaten": [
+    {
+      "kvkNummer": "68750110",
+      "naam": "Test BV Donald",
+      "type": "rechtspersoon",
+      "links": [
+        {
+          "rel": "basisprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/basisprofielen/68750110"
+        }
+      ]
+    },
+    {
+      "kvkNummer": "69599068",
+      "naam": "Test Stichting Bolderbast",
+      "adres": {
+        "binnenlandsAdres": {
+          "type": "bezoekadres",
+          "straatnaam": "Oosterwal",
+          "plaats": "Lochem"
+        }
+      },
+      "type": "rechtspersoon",
+      "links": [
+        {
+          "rel": "basisprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/basisprofielen/69599068"
+        }
+      ]
+    },
+    {
+      "kvkNummer": "68750110",
+      "vestigingsnummer": "000037178601",
+      "naam": "Test BV Donald Nevenvestiging",
+      "adres": {
+        "binnenlandsAdres": {
+          "type": "bezoekadres",
+          "straatnaam": "Brinkerinckbaan",
+          "plaats": "Diepenveen"
+        }
+      },
+      "type": "nevenvestiging",
+      "links": [
+        {
+          "rel": "basisprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/basisprofielen/68750110"
+        },
+        {
+          "rel": "vestigingsprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/vestigingsprofielen/000037178601"
+        }
+      ]
+    },
+    {
+      "kvkNummer": "68727720",
+      "naam": "Test NV Katrien - Statutory Naam",
+      "type": "rechtspersoon",
+      "links": [
+        {
+          "rel": "basisprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/basisprofielen/68727720"
+        }
+      ]
+    },
+    {
+      "kvkNummer": "69599084",
+      "vestigingsnummer": "000038509520",
+      "naam": "Test EMZ Nevenvestiging Govert",
+      "adres": {
+        "binnenlandsAdres": {
+          "type": "bezoekadres",
+          "straatnaam": "Geneinde",
+          "plaats": "Maastricht"
+        }
+      },
+      "type": "nevenvestiging",
+      "links": [
+        {
+          "rel": "basisprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/basisprofielen/69599084"
+        },
+        {
+          "rel": "vestigingsprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/vestigingsprofielen/000038509520"
+        }
+      ]
+    },
+    {
+      "kvkNummer": "68750110",
+      "vestigingsnummer": "000037178598",
+      "naam": "Test BV Donald",
+      "adres": {
+        "binnenlandsAdres": {
+          "type": "bezoekadres",
+          "straatnaam": "Hizzaarderlaan",
+          "plaats": "Lollum"
+        }
+      },
+      "type": "hoofdvestiging",
+      "links": [
+        {
+          "rel": "basisprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/basisprofielen/68750110"
+        },
+        {
+          "rel": "vestigingsprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/vestigingsprofielen/000037178598"
+        }
+      ]
+    },
+    {
+      "kvkNummer": "42264003",
+      "vestigingsnummer": "000079011411",
+      "naam": "Test aansluiting B.V.",
+      "adres": {
+        "binnenlandsAdres": {
+          "type": "bezoekadres",
+          "straatnaam": "St.-Jacobsstraat",
+          "plaats": "Utrecht"
+        }
+      },
+      "type": "hoofdvestiging",
+      "links": [
+        {
+          "rel": "basisprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/basisprofielen/42264003"
+        },
+        {
+          "rel": "vestigingsprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/vestigingsprofielen/000079011411"
+        }
+      ]
+    },
+    {
+      "kvkNummer": "68727720",
+      "vestigingsnummer": "000037143557",
+      "naam": "Test NV Katrien - Handelsnaam",
+      "adres": {
+        "binnenlandsAdres": {
+          "type": "bezoekadres",
+          "straatnaam": "Rietdekkershof",
+          "plaats": "Veendam"
+        }
+      },
+      "type": "hoofdvestiging",
+      "links": [
+        {
+          "rel": "basisprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/basisprofielen/68727720"
+        },
+        {
+          "rel": "vestigingsprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/vestigingsprofielen/000037143557"
+        }
+      ]
+    },
+    {
+      "kvkNummer": "69599084",
+      "vestigingsnummer": "000038509504",
+      "naam": "Test EMZ Dagobert",
+      "adres": {
+        "binnenlandsAdres": {
+          "type": "bezoekadres",
+          "straatnaam": "Abebe Bikilalaan",
+          "plaats": "Amsterdam"
+        }
+      },
+      "type": "hoofdvestiging",
+      "links": [
+        {
+          "rel": "basisprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/basisprofielen/69599084"
+        },
+        {
+          "rel": "vestigingsprofiel",
+          "href": "https://api.kvk.nl/test/api/v1/vestigingsprofielen/000038509504"
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "rel": "self",
+      "href": "https://api.kvk.nl/test/api/v2/zoeken?naam=test&pagina=1&resultatenperpagina=10"
+    }
+  ]
+}
