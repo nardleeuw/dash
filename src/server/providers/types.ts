@@ -61,6 +61,8 @@ export type ProviderPage = {
   results: DiscoveredBusiness[];
   nextCursor: string | null;
   total?: number | null;
+  /** Search tasks done / planned (Google tiled search). */
+  progress?: { done: number; total: number };
   notice?: string;
 };
 

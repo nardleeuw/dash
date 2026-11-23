@@ -76,11 +76,13 @@ export class OverpassClient implements OverpassApi {
   constructor(private readonly endpoint = process.env.OVERPASS_URL || DEFAULT_ENDPOINT, private readonly appUrl = process.env.APP_URL ?? "") {}
 
   async query(ql: string, orgId?: string) {
+    // Public Overpass instances often refuse or stall requests from cloud IPs:
+    // fail fast (no retry) so the search is never held up by OSM.
     const res = await providerFetch(this.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": `Leadwerk/0.1 (${this.appUrl || "leadwerk"})` },
       body: new URLSearchParams({ data: ql }).toString(),
-    }, { provider: "osm", operation: "overpass", orgId, timeoutMs: 35_000, retries: 1 });
+    }, { provider: "osm", operation: "overpass", orgId, timeoutMs: 12_000, retries: 0 });
     const json = (await res.json()) as { elements?: OsmElement[] };
     return json.elements ?? [];
   }

@@ -1,10 +1,9 @@
 "use client";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
-  Bookmark, Building2, Check, ChevronDown, Globe, Loader2, MapPin, Phone, Search, Star, Trash2, X, Map as MapIcon, Table2,
+  Bookmark, Building2, Check, ChevronDown, Globe, Loader2, MapPin, Phone, Search, Star, Trash2, X, Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +15,6 @@ import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/app/page-header";
@@ -29,7 +27,8 @@ import type { DiscoveredBusiness, DiscoveryProvider, LocationFilter } from "@/se
 import type { SearchFilters } from "@/lib/discovery-schema";
 import { deleteSavedSearchAction, importAction, saveSearchAction, searchAction, touchSavedSearchAction } from "./actions";
 
-const ResultsMap = dynamic(() => import("@/components/map/results-map"), { ssr: false, loading: () => <div className="h-[560px] animate-pulse rounded-lg bg-secondary" /> });
+/** Keep loading pages automatically until this many results (user can stop or load more). */
+const AUTO_LOAD_TARGET = 400;
 
 type ProviderStatus = "live" | "mock" | "disabled" | "test";
 type Saved = { id: string; name: string; filters: SearchFilters; last_run_at: string | null; last_result_count: number | null };
@@ -41,7 +40,7 @@ const TYPE_MAP: Record<Suggestion["type"], LocationFilter["type"]> = { provincie
 
 export function DiscoverClient(props: {
   providers: Record<DiscoveryProvider, ProviderStatus>;
-  industries: { key: string; label: string }[];
+  industries: IndustryOption[];
   savedSearches: Saved[];
   lists: { id: string; name: string }[];
   canWrite: boolean;
@@ -95,12 +94,25 @@ export function DiscoverClient(props: {
   }, [raw, activeOnly, requireWebsite, requirePhone]);
 
   const hasMore = providers.some((p) => cursors[p] !== null && cursors[p] !== undefined);
+  const [autoLoad, setAutoLoad] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const autoLoading = autoLoad && hasMore && raw.length < AUTO_LOAD_TARGET;
+  // Keep fetching the next batch (tiles × queries) until enough results or nothing left.
+  useEffect(() => {
+    if (autoLoading && !pending && searched) run(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLoading, pending, searched, cursors]);
 
   function run(reset: boolean, f = filters()) {
     const nextCursors = reset ? {} : cursors;
+    if (reset) {
+      setAutoLoad(true);
+      setProgress(null);
+    }
     startTransition(async () => {
       const res = await searchAction(f, nextCursors);
       if (!res.ok) {
+        setAutoLoad(false);
         toast.error((t.common.errors as Record<string, string>)[res.error] ?? t.common.errors.unexpected);
         return;
       }
@@ -110,6 +122,7 @@ export function DiscoverClient(props: {
       const n: Partial<Record<DiscoveryProvider, string>> = reset ? {} : { ...notices };
       for (const p of res.data.pages) {
         c[p.provider] = p.nextCursor;
+        if (p.progress) setProgress(p.progress);
         if (p.notice) n[p.provider] = p.notice;
       }
       for (const p of f.providers) if (!(p in c)) c[p] = null;
@@ -180,10 +193,6 @@ export function DiscoverClient(props: {
     });
   }
 
-  const mapPoints = merged
-    .filter((m) => m.primary.lat != null && m.primary.lng != null && m.primary.coordinatesShareable)
-    .map((m) => ({ id: m.key, lat: m.primary.lat!, lng: m.primary.lng!, label: m.primary.name, sublabel: m.primary.address.city ?? undefined, selected: selected.has(m.key) }));
-  const hiddenOnMap = merged.length - mapPoints.length;
   const hasGoogle = merged.some((m) => m.sources.some((s) => s.provider === "google_places"));
 
   return (
@@ -319,14 +328,19 @@ export function DiscoverClient(props: {
         ) : merged.length === 0 && !pending ? (
           <EmptyState icon={Search} title={d.noResultsTitle} description={d.noResultsText} />
         ) : (
-          <Tabs defaultValue="table">
+          <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <TabsList>
-                  <TabsTrigger value="table"><Table2 className="size-4" />{d.table}</TabsTrigger>
-                  <TabsTrigger value="map"><MapIcon className="size-4" />{d.map}</TabsTrigger>
-                </TabsList>
-                <span className="text-sm text-muted-foreground">{fmt(d.results, { count: merged.length })}</span>
+                <span className="text-sm font-medium">{fmt(d.results, { count: merged.length })}</span>
+                {autoLoading && (
+                  <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="size-3.5 animate-spin" />
+                    {progress ? fmt(d.searchingProgress, { done: progress.done, total: progress.total }) : d.searchingArea}
+                    <button type="button" className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 hover:bg-accent" onClick={() => setAutoLoad(false)}>
+                      <Square className="size-3" />{d.stop}
+                    </button>
+                  </span>
+                )}
               </div>
               {props.canWrite && (
                 <div className="flex items-center gap-2">
@@ -345,7 +359,7 @@ export function DiscoverClient(props: {
               )}
             </div>
 
-            <TabsContent value="table">
+            <div>
               <Card className="gap-0 overflow-hidden p-0">
                 <Table>
                   <TableHeader>
@@ -421,28 +435,21 @@ export function DiscoverClient(props: {
                   </TableBody>
                 </Table>
               </Card>
-            </TabsContent>
-
-            <TabsContent value="map">
-              <Card className="gap-0 overflow-hidden p-0">
-                <ResultsMap points={mapPoints} onToggle={(id) => props.canWrite && toggle(id)} />
-              </Card>
-              {hiddenOnMap > 0 && <p className="mt-2 text-xs text-muted-foreground">{fmt(d.mapGoogleHidden, { count: hiddenOnMap })}</p>}
-            </TabsContent>
+            </div>
 
             <div className="mt-3 flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
                 {hasGoogle && <>{d.attributionGoogle} · </>}
                 {d.attributionOsm}
               </p>
-              {hasMore && (
+              {hasMore && !autoLoading && (
                 <Button variant="outline" size="sm" onClick={() => run(false)} disabled={pending}>
                   {pending ? <Loader2 className="animate-spin" /> : <ChevronDown />}
                   {d.loadMore}
                 </Button>
               )}
             </div>
-          </Tabs>
+          </div>
         )}
       </div>
 
@@ -487,10 +494,16 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
   );
 }
 
-function IndustryPicker({ options, value, onChange }: { options: { key: string; label: string }[]; value: string[]; onChange: (v: string[]) => void }) {
+type IndustryOption = { key: string; label: string; group: string; aliases: string[] };
+
+function IndustryPicker({ options, value, onChange }: { options: IndustryOption[]; value: string[]; onChange: (v: string[]) => void }) {
   const t = useT();
   const [q, setQ] = useState("");
-  const filtered = options.filter((o) => o.label.toLowerCase().includes(q.toLowerCase()));
+  const needle = q.trim().toLowerCase();
+  const filtered = needle
+    ? options.filter((o) => o.label.toLowerCase().includes(needle) || o.group.toLowerCase().includes(needle) || o.aliases.some((a) => a.includes(needle)))
+    : options;
+  const groups = [...new Set(filtered.map((o) => o.group))];
   return (
     <div className="space-y-1.5">
       <Label>{t.discover.industries}</Label>
@@ -503,25 +516,31 @@ function IndustryPicker({ options, value, onChange }: { options: { key: string; 
             <ChevronDown className="opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+        <PopoverContent className="w-[min(380px,calc(100vw-2rem))] p-0" align="start">
           <div className="border-b p-2">
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.discover.industrySearch} className="h-8" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.discover.industrySearch} className="h-8" autoFocus />
           </div>
-          <div className="max-h-72 overflow-y-auto p-1">
-            {filtered.map((o) => {
-              const on = value.includes(o.key);
-              return (
-                <button
-                  type="button"
-                  key={o.key}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                  onClick={() => onChange(on ? value.filter((v) => v !== o.key) : [...value, o.key].slice(0, 10))}
-                >
-                  <Checkbox checked={on} className="pointer-events-none" tabIndex={-1} />
-                  {o.label}
-                </button>
-              );
-            })}
+          <div className="max-h-[min(420px,60vh)] overflow-y-auto overscroll-contain p-1" onWheel={(e) => e.stopPropagation()}>
+            {groups.length === 0 && <p className="px-2 py-3 text-xs text-muted-foreground">{t.discover.industryNoMatch}</p>}
+            {groups.map((g) => (
+              <div key={g} className="pb-1">
+                <p className="px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{g}</p>
+                {filtered.filter((o) => o.group === g).map((o) => {
+                  const on = value.includes(o.key);
+                  return (
+                    <button
+                      type="button"
+                      key={o.key}
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                      onClick={() => onChange(on ? value.filter((v) => v !== o.key) : [...value, o.key].slice(0, 10))}
+                    >
+                      <Checkbox checked={on} className="pointer-events-none" tabIndex={-1} />
+                      {o.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </PopoverContent>
       </Popover>

@@ -125,8 +125,3 @@
   }
 }
 
-/* Leaflet map container must have a height */
-.leaflet-container {
-  font-family: inherit;
-  border-radius: var(--radius);
-}

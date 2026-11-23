@@ -6,7 +6,7 @@ import { getKvk, getOverpass, getPlaces } from "@/server/providers/registry";
 import { mapSearchResult } from "@/server/providers/kvk/map";
 import { mapPlace } from "@/server/providers/google-places/client";
 import { buildOverpassQuery, mapOsmElement, type OverpassArea } from "@/server/providers/osm/client";
-import { INDUSTRY_BY_KEY } from "@/config/industries";
+import { googleQueriesFor, INDUSTRY_BY_KEY } from "@/config/industries";
 import { NL_BBOX, PROVINCE_BY_NAME } from "@/config/geo";
 import { consumeCredits } from "@/server/usage";
 import { mergeSearchResults, type MergedResult } from "./dedupe";
@@ -22,7 +22,6 @@ export type SearchResponse = {
   errors: { provider: DiscoveryProvider; message: string }[];
 };
 
-const MAX_COMBOS = 9; // locations × industries searched on Google per query (cost cap)
 const OSM_PAGE = 50;
 
 /* ------------------------------------------------------------------ KVK */
@@ -50,29 +49,61 @@ async function searchKvk(q: SearchRequest, cursor: string | null, orgId: string)
 }
 
 /* ------------------------------------------------------- Google Places */
-type GoogleTask = { textQuery: string; includedType?: string; rectangle?: [number, number, number, number]; circle?: { lat: number; lng: number; radiusM: number } };
+/**
+ * Google Text Search returns at most 20 places per page and 60 per query. To
+ * find (close to) every business in an area we split the area into a grid of
+ * tiles (locationRestriction rectangles), run every query variant of an
+ * industry per tile, and follow all pages. The cursor walks through that task
+ * list; the client keeps loading until it has enough results.
+ */
+type Box = [number, number, number, number]; // [south, west, north, east]
+type GoogleTask = { textQuery: string; includedType?: string; rectangle: Box };
 
-function googleTasks(q: SearchRequest): GoogleTask[] {
+const GOOGLE_TASKS_PER_CALL = 4; // tasks fetched in parallel per server call
+const GOOGLE_MAX_PAGES = 3; // Google's own cap (3 × 20 = 60 per query)
+const GOOGLE_MAX_TASKS = 120; // hard cap per search (cost)
+
+export function circleBox(lat: number, lng: number, radiusM: number): Box {
+  const dLat = radiusM / 111_320;
+  const dLng = radiusM / (111_320 * Math.cos((lat * Math.PI) / 180));
+  return [lat - dLat, lng - dLng, lat + dLat, lng + dLng];
+}
+
+export function splitBox([s, w, n, e]: Box, parts: number): Box[] {
+  const out: Box[] = [];
+  const h = (n - s) / parts;
+  const v = (e - w) / parts;
+  for (let i = 0; i < parts; i++) for (let j = 0; j < parts; j++) out.push([s + i * h, w + j * v, s + (i + 1) * h, w + (j + 1) * v]);
+  return out;
+}
+
+function areaTiles(loc: LocationFilter, radiusKm?: number): Box[] {
+  if (loc.type === "nl") return splitBox(NL_BBOX, 4);
+  if (loc.type === "province") {
+    const bbox = PROVINCE_BY_NAME.get(loc.name.toLowerCase())?.bbox;
+    return bbox ? splitBox(bbox as Box, 4) : splitBox(circleBox(loc.lat, loc.lng, 30_000), 4);
+  }
+  const km = loc.type === "radius" ? loc.radiusKm : radiusKm ?? (loc.type === "postcode" ? 3 : 7);
+  const grid = km <= 2 ? 1 : km <= 4 ? 2 : km <= 10 ? 3 : km <= 25 ? 4 : 5;
+  return splitBox(circleBox(loc.lat, loc.lng, km * 1000), grid);
+}
+
+export function googleTasks(q: Pick<SearchRequest, "locations" | "industries" | "text" | "language" | "radiusKm">): GoogleTask[] {
   const locations: LocationFilter[] = q.locations.length ? q.locations : [{ type: "nl" }];
-  const industries = q.industries.length ? q.industries.map((k) => INDUSTRY_BY_KEY.get(k)).filter(Boolean) : [null];
+  const industries = q.industries.length ? q.industries.map((k) => INDUSTRY_BY_KEY.get(k)).filter((i) => !!i) : [null];
+  const text = q.text?.trim() || null;
   const tasks: GoogleTask[] = [];
   for (const loc of locations) {
+    const tiles = areaTiles(loc, q.radiusKm);
     for (const ind of industries) {
-      const term = [ind ? ind.googleQuery[q.language] : null, q.text?.trim()].filter(Boolean).join(" ");
-      if (!term) continue;
-      const where = loc.type === "nl" ? "Nederland" : loc.name;
-      const task: GoogleTask = { textQuery: `${term} in ${where}`, includedType: ind?.googleType };
-      if (loc.type === "nl") task.rectangle = NL_BBOX;
-      else if (loc.type === "province") task.rectangle = PROVINCE_BY_NAME.get(loc.name.toLowerCase())?.bbox ?? undefined;
-      else {
-        const km = loc.type === "radius" ? loc.radiusKm : q.radiusKm ?? (loc.type === "postcode" ? 3 : 8);
-        task.circle = { lat: loc.lat, lng: loc.lng, radiusM: km * 1000 };
+      const queries = ind ? googleQueriesFor(ind, q.language).map((t) => (text ? `${t} ${text}` : t)) : text ? [text] : [];
+      // Query-major order: the first calls cover the whole area with the main query.
+      for (const textQuery of queries) {
+        for (const rectangle of tiles) tasks.push({ textQuery, includedType: ind?.googleType, rectangle });
       }
-      tasks.push(task);
-      if (tasks.length >= MAX_COMBOS) return tasks;
     }
   }
-  return tasks;
+  return tasks.slice(0, GOOGLE_MAX_TASKS);
 }
 
 async function searchGoogle(q: SearchRequest, cursor: string | null, orgId: string): Promise<ProviderPage> {
@@ -80,18 +111,35 @@ async function searchGoogle(q: SearchRequest, cursor: string | null, orgId: stri
   if (!places) return { provider: "google_places", results: [], nextCursor: null, notice: "not_configured" };
   const tasks = googleTasks(q);
   if (tasks.length === 0) return { provider: "google_places", results: [], nextCursor: null, notice: "needs_term" };
-  const [idxStr, token] = (cursor ?? "0:").split(":");
-  const idx = Number(idxStr) || 0;
-  const task = tasks[idx];
-  if (!task) return { provider: "google_places", results: [], nextCursor: null };
-  const { places: list, nextPageToken } = await places.client.searchText({ ...task, pageToken: token || undefined, languageCode: q.language }, orgId);
-  const results = list.map((p) => mapPlace(p, places.isMock));
-  const nextCursor = nextPageToken ? `${idx}:${nextPageToken}` : idx + 1 < tasks.length ? `${idx + 1}:` : null;
-  return { provider: "google_places", results, nextCursor, notice: places.isMock ? "mock" : undefined };
+  const start = Math.max(0, Number(cursor ?? 0) || 0);
+  const batch = tasks.slice(start, start + GOOGLE_TASKS_PER_CALL);
+  const lists = await Promise.all(
+    batch.map(async (task) => {
+      const out = [];
+      let token: string | undefined;
+      for (let page = 0; page < GOOGLE_MAX_PAGES; page++) {
+        const res = await places.client.searchText({ ...task, pageToken: token, languageCode: q.language }, orgId);
+        out.push(...res.places);
+        if (!res.nextPageToken || res.places.length < 20) break;
+        token = res.nextPageToken;
+      }
+      return out;
+    }),
+  );
+  const unique = [...new Map(lists.flat().map((p) => [p.id, p])).values()];
+  const done = start + batch.length;
+  return {
+    provider: "google_places",
+    results: unique.map((p) => mapPlace(p, places.isMock)),
+    nextCursor: done < tasks.length ? String(done) : null,
+    progress: { done, total: tasks.length },
+    notice: places.isMock ? "mock" : undefined,
+  };
 }
 
 /* ----------------------------------------------------------------- OSM */
 const osmCache = new Map<string, { at: number; results: DiscoveredBusiness[] }>();
+let osmDownUntil = 0; // circuit breaker: skip OSM for a while after a failure
 
 function osmArea(loc: LocationFilter, radiusKm?: number): OverpassArea | null {
   switch (loc.type) {
@@ -116,12 +164,19 @@ async function searchOsm(q: SearchRequest, cursor: string | null, orgId: string)
   const areas = q.locations.map((l) => osmArea(l, q.radiusKm)).filter((a): a is OverpassArea => !!a).slice(0, 3);
   if (areas.length === 0) return { provider: "osm", results: [], nextCursor: null, notice: "osm_requires_location" };
 
+  if (!osm.isMock && Date.now() < osmDownUntil) return { provider: "osm", results: [], nextCursor: null, notice: "osm_unavailable" };
   const key = JSON.stringify({ tags, areas, mock: osm.isMock });
   let cached = osmCache.get(key);
   if (!cached || Date.now() - cached.at > 10 * 60_000) {
     const all: DiscoveredBusiness[] = [];
     for (const area of areas) {
-      const elements = await osm.client.query(buildOverpassQuery(tags, area), orgId);
+      let elements;
+      try {
+        elements = await osm.client.query(buildOverpassQuery(tags, area), orgId);
+      } catch {
+        osmDownUntil = Date.now() + 15 * 60_000;
+        return { provider: "osm", results: [], nextCursor: null, notice: "osm_unavailable" };
+      }
       for (const el of elements) {
         const m = mapOsmElement(el, osm.isMock);
         if (m) all.push(m);

@@ -9,7 +9,7 @@ const csp = [
   // Next.js injects inline bootstrap scripts; no third-party scripts are loaded.
   "script-src 'self' 'unsafe-inline'" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://tile.openstreetmap.org",
+  "img-src 'self' data: blob:",
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseUrl}`,
   "frame-ancestors 'none'",

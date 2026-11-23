@@ -4,7 +4,7 @@ import { createClient } from "@/server/supabase/server";
 import { getDictionary } from "@/i18n/server";
 import { providerMode } from "@/server/providers/mode";
 import { env } from "@/server/env";
-import { INDUSTRIES } from "@/config/industries";
+import { industryOptions } from "@/config/industries";
 import { DiscoverClient } from "./discover-client";
 
 export const metadata = { title: "Bedrijven vinden" };
@@ -22,7 +22,7 @@ export default async function DiscoverPage() {
     google_places: providerMode("google_places"),
     osm: providerMode("osm"),
   } as const;
-  const industries = INDUSTRIES.map((i) => ({ key: i.key, label: t.meta.locale === "en" ? i.en : i.nl }));
+  const industries = industryOptions(t.meta.locale === "en" ? "en" : "nl");
   return (
     <>
       <PageHeader title={t.discover.title} description={t.discover.subtitle} />
