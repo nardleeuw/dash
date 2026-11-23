@@ -170,6 +170,10 @@ export function DiscoverClient(props: {
     if (groups.length === 0) return;
     startImport(async () => {
       const res = await importAction(groups, listId === "none" ? null : listId);
+      if (!res.ok && res.error === "import_over_credits") {
+        toast.error(fmt(d.importOverCredits, { count: groups.length, remaining: res.fieldErrors?.remaining?.[0] ?? "0" }));
+        return;
+      }
       if (!res.ok) {
         toast.error((t.common.errors as Record<string, string>)[res.error] ?? t.common.errors.unexpected);
         return;

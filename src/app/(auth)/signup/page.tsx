@@ -7,7 +7,8 @@ export const metadata = { title: "Sign up" };
 
 export default async function SignupPage({ searchParams }: PageProps<"/signup">) {
   const t = await getDictionary();
-  const { next } = await searchParams;
+  const { next, plan } = await searchParams;
+  const chosen = typeof plan === "string" && ["starter", "growth", "pro"].includes(plan) ? plan : null;
   return (
     <div>
       <h1 className="text-2xl font-semibold tracking-tight">{t.auth.signupTitle}</h1>
@@ -15,7 +16,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
       <AuthForm
         action={signUpAction}
         submitLabel={t.auth.signup}
-        hidden={typeof next === "string" ? { next } : undefined}
+        hidden={{ ...(typeof next === "string" ? { next } : {}), ...(chosen ? { plan: chosen } : {}) }}
         fields={[
           { name: "fullName", type: "text", label: t.auth.fullName, autoComplete: "name" },
           { name: "email", type: "email", label: t.auth.email, autoComplete: "email" },
@@ -25,7 +26,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
           <div className="space-y-3 pt-2 text-sm">
             <p className="text-xs text-muted-foreground">{t.auth.termsNotice}</p>
             <p className="text-muted-foreground">
-              {t.auth.haveAccount} <Link href="/login" className="font-medium text-primary hover:underline">{t.auth.login}</Link>
+              {t.auth.haveAccount} <Link href={chosen ? `/login?next=${encodeURIComponent(`/billing?plan=${chosen}`)}` : "/login"} className="font-medium text-primary hover:underline">{t.auth.login}</Link>
             </p>
           </div>
         }

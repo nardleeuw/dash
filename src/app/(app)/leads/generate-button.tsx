@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Mail, Wand2 } from "lucide-react";
@@ -125,7 +126,14 @@ export function GenerateDialog(props: {
             <Label htmlFor="instr">{e.instructions}</Label>
             <Textarea id="instr" value={instructions} onChange={(x) => setInstructions(x.target.value)} placeholder={e.instructionsPlaceholder} rows={2} maxLength={800} />
           </div>
-          {profile && !profile.complete && <Alert variant="warning"><AlertDescription className="col-start-1 text-foreground">{e.profileMissing}</AlertDescription></Alert>}
+          {(!profile || !profile.complete) && (
+            <Alert variant="warning">
+              <AlertDescription className="col-start-1 flex flex-wrap items-center justify-between gap-3 text-foreground">
+                <span>{e.profileMissing}</span>
+                <Button size="sm" variant="outline" asChild><Link href="/emails?tab=profile" onClick={() => setOpen(false)}>{e.fillProfile}</Link></Button>
+              </AlertDescription>
+            </Alert>
+          )}
           {count !== null && remaining !== null && (
             <p className="text-xs text-muted-foreground">{fmt(e.estimate, { count, credits: count, remaining })}</p>
           )}

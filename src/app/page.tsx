@@ -1,59 +1,173 @@
 import Link from "next/link";
-import { ArrowRight, Building2, MailCheck, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, AtSign, CheckCircle2, MailCheck, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
-import { getDictionary } from "@/i18n/server";
 import { getCurrentUser } from "@/server/auth";
+import { createAdminClient } from "@/server/supabase/admin";
+import { formatCurrency, formatNumber } from "@/i18n/format";
+import { LandingDemo, type DemoPlan } from "./landing-demo";
+
+export const metadata = { title: "Leadwerk — vind bedrijven, vind hun e-mail, mail elk bedrijf persoonlijk" };
+
+type PlanRow = { key: string; name: string; description: string | null; price_cents: number; limits: Record<string, number>; sort_order: number };
+
+const FALLBACK_PLANS: PlanRow[] = [
+  { key: "starter", name: "Starter", description: "Voor freelancers en kleine agencies", price_cents: 4900, limits: { search: 1000, enrichment: 250, research: 150, email_generation: 150, send: 500 }, sort_order: 1 },
+  { key: "growth", name: "Growth", description: "Voor groeiende agencies", price_cents: 9900, limits: { search: 3000, enrichment: 750, research: 500, email_generation: 500, send: 2000 }, sort_order: 2 },
+  { key: "pro", name: "Pro", description: "Voor teams met meerdere klanten", price_cents: 19900, limits: { search: 10000, enrichment: 2500, research: 1500, email_generation: 1500, send: 6000 }, sort_order: 3 },
+];
+
+/** Public plan list (prices are public information; read with the service client because the page is public). */
+async function publicPlans(): Promise<PlanRow[]> {
+  try {
+    const { data } = await createAdminClient().from("plans").select("key, name, description, price_cents, limits, sort_order").eq("is_public", true).eq("is_active", true).order("sort_order");
+    return data?.length ? (data as PlanRow[]) : FALLBACK_PLANS;
+  } catch {
+    return FALLBACK_PLANS;
+  }
+}
+
+const LIMIT_LABEL: [string, string][] = [
+  ["enrichment", "bedrijven importeren & adressen zoeken"],
+  ["email_generation", "persoonlijke e-mails"],
+  ["research", "AI-onderzoeken van websites"],
+  ["send", "e-mails versturen"],
+];
 
 export default async function LandingPage() {
-  const [t, user] = await Promise.all([getDictionary(), getCurrentUser()]);
-  const nl = t.meta.locale === "nl";
-  const features = [
-    { icon: Search, title: nl ? "Bedrijven vinden" : "Find businesses", text: nl ? "Zoek in heel Nederland op branche, SBI-code, provincie, gemeente of straal — met KVK, Google Places en OpenStreetMap." : "Search the Netherlands by industry, SBI code, province, municipality or radius — with KVK, Google Places and OpenStreetMap." },
-    { icon: Sparkles, title: nl ? "Onderzoek per bedrijf" : "Per-business research", text: nl ? "AI analyseert elke website afzonderlijk en scheidt geverifieerde observaties van hypotheses." : "AI analyses each website individually and separates verified observations from hypotheses." },
-    { icon: MailCheck, title: nl ? "Eén e-mail per bedrijf" : "One email per business", text: nl ? "Geen sjabloon met een naam erin: elke e-mail is apart onderzocht, geschreven en gecontroleerd op feiten." : "No template with a name pasted in: every email is separately researched, written and fact-checked." },
-    { icon: ShieldCheck, title: nl ? "Compliance ingebouwd" : "Compliance built in", text: nl ? "Harde verzendpoort met grondslag, bewijs, suppressielijst en afmelden — afgestemd op AVG en Telecommunicatiewet." : "Hard sending gate with legal basis, evidence, suppression list and unsubscribe — aligned with GDPR and Dutch law." },
-  ];
+  const [user, plans] = await Promise.all([getCurrentUser(), publicPlans()]);
+  const highlight = plans[Math.min(1, plans.length - 1)]?.key;
+  const planHref = (key: string) => (user ? `/billing?plan=${key}` : `/signup?plan=${key}`);
+  const demoPlans: DemoPlan[] = plans.map((p) => ({ key: p.key, name: p.name, price: formatCurrency(p.price_cents, "nl"), description: p.description ?? "", highlight: p.key === highlight, href: planHref(p.key) }));
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <Logo />
-        <div className="flex items-center gap-2">
-          {user ? (
-            <Button asChild><Link href="/overview">{t.nav.overview} <ArrowRight /></Link></Button>
-          ) : (
-            <>
-              <Button variant="ghost" asChild><Link href="/login">{t.auth.login}</Link></Button>
-              <Button asChild><Link href="/signup">{t.auth.signup}</Link></Button>
-            </>
-          )}
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <Logo />
+          <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
+            <a href="#demo" className="hover:text-foreground">Zo werkt het</a>
+            <a href="#prijzen" className="hover:text-foreground">Prijzen</a>
+            <a href="#vragen" className="hover:text-foreground">Vragen</a>
+          </nav>
+          <div className="flex items-center gap-2">
+            {user ? (
+              <Button asChild><Link href="/overview">Naar je account <ArrowRight /></Link></Button>
+            ) : (
+              <>
+                <Button variant="ghost" asChild><Link href="/login">Inloggen</Link></Button>
+                <Button className="hidden sm:inline-flex" asChild><a href="#prijzen">Kies je abonnement</a></Button>
+              </>
+            )}
+          </div>
         </div>
       </header>
+
+      {/* hero */}
       <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_60%_at_50%_0%,oklch(0.93_0.05_262/.8),transparent)]" />
-        <div className="relative mx-auto max-w-4xl px-6 pt-20 pb-16 text-center">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(55%_60%_at_50%_0%,oklch(0.93_0.05_262/.85),transparent)]" />
+        <div className="relative mx-auto max-w-4xl px-6 pt-16 pb-12 text-center sm:pt-20">
           <span className="inline-flex items-center gap-1.5 rounded-full border bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground shadow-xs">
-            <Building2 className="size-3.5 text-primary" /> {nl ? "Voor AI-, web- en marketingagencies in Nederland" : "For AI, web and marketing agencies in the Netherlands"}
+            <Sparkles className="size-3.5 text-primary" /> Voor AI-, web-, automatiserings- en marketingagencies
           </span>
-          <h1 className="mx-auto mt-6 max-w-3xl text-5xl leading-[1.05] font-semibold tracking-tight text-balance">
-            {nl ? "Acquisitie die voelt als maatwerk — voor elk bedrijf opnieuw." : "Outbound that feels hand-crafted — for every single business."}
+          <h1 className="mx-auto mt-6 max-w-3xl text-4xl leading-[1.05] font-semibold tracking-tight text-balance sm:text-6xl">
+            Vind honderden klanten. Mail elk bedrijf alsof je het kent.
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground text-balance">{t.brand.tagline}</p>
-          <div className="mt-8 flex justify-center gap-3">
-            <Button size="lg" asChild><Link href={user ? "/overview" : "/signup"}>{nl ? "Gratis starten" : "Start free"} <ArrowRight /></Link></Button>
-            {!user && <Button size="lg" variant="outline" asChild><Link href="/login">{t.auth.login}</Link></Button>}
+          <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground text-balance">
+            Zoek bedrijven per branche en plaats, vind automatisch hun e-mailadres en verstuur voor elk bedrijf een eigen e-mail, gebaseerd op wat er écht op hun website staat.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Button size="lg" asChild><a href="#prijzen">Kies je abonnement <ArrowRight /></a></Button>
+            <Button size="lg" variant="outline" asChild><a href="#demo">Bekijk hoe het werkt</a></Button>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">Vanaf {formatCurrency(plans[0]?.price_cents ?? 4900, "nl")} per maand · maandelijks opzegbaar · gemaakt voor Nederland</p>
+        </div>
+      </section>
+
+      {/* demo */}
+      <section id="demo" className="mx-auto max-w-6xl scroll-mt-24 px-6 pb-24">
+        <LandingDemo plans={demoPlans} />
+      </section>
+
+      {/* how it works */}
+      <section className="border-y bg-secondary/40">
+        <div className="mx-auto grid max-w-6xl gap-8 px-6 py-20 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { icon: Search, title: "1. Vind bedrijven", text: "97 branches, elke plaats of straal. We doorzoeken het hele gebied: geen 20 resultaten, maar honderden." },
+            { icon: AtSign, title: "2. Vind hun e-mail", text: "Website, Hunter en internet. Elk adres met bron; wat we niet kunnen controleren, nemen we niet over." },
+            { icon: Sparkles, title: "3. Eén e-mail per bedrijf", text: "AI leest de website en schrijft een mail over hún situatie. Geen sjabloon met een naam erin." },
+            { icon: MailCheck, title: "4. Verstuur & volg op", text: "Vanaf je eigen mailbox, binnen veilige limieten. Reacties komen binnen in één inbox, met AI-labels." },
+          ].map((f) => (
+            <div key={f.title}>
+              <div className="flex size-10 items-center justify-center rounded-xl bg-primary-soft"><f.icon className="size-5 text-primary" /></div>
+              <p className="mt-4 font-semibold">{f.title}</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{f.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* pricing */}
+      <section id="prijzen" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-24">
+        <div className="text-center">
+          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Eén nieuwe klant betaalt je abonnement terug</h2>
+          <p className="mt-3 text-muted-foreground">Kies een plan, rond de betaling af en begin direct. Maandelijks opzegbaar.</p>
+        </div>
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
+          {plans.map((p) => {
+            const top = p.key === highlight;
+            return (
+              <div key={p.key} className={`relative flex flex-col rounded-2xl border bg-background p-6 ${top ? "border-primary shadow-[0_20px_50px_-20px_rgba(37,99,235,0.35)] ring-1 ring-primary" : ""}`}>
+                {top && <span className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">Meest gekozen</span>}
+                <p className="text-lg font-semibold">{p.name}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>
+                <p className="mt-5 text-4xl font-semibold tracking-tight">{formatCurrency(p.price_cents, "nl")}<span className="text-base font-normal text-muted-foreground"> /maand</span></p>
+                <ul className="mt-6 flex-1 space-y-2.5 text-sm">
+                  {LIMIT_LABEL.filter(([k]) => p.limits[k] != null).map(([k, label]) => (
+                    <li key={k} className="flex gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />{formatNumber(p.limits[k], "nl")} {label} per maand</li>
+                  ))}
+                  {p.limits.users != null && <li className="flex gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />{p.limits.users} {p.limits.users === 1 ? "gebruiker" : "gebruikers"}</li>}
+                  <li className="flex gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />Zoeken in heel Nederland, 97 branches</li>
+                  <li className="flex gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />Afmeldlink, suppressielijst en bronvermelding</li>
+                </ul>
+                <Button className="mt-7" size="lg" variant={top ? "default" : "outline"} asChild>
+                  <Link href={planHref(p.key)}>Start met {p.name} <ArrowRight /></Link>
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="size-4" />Veilig betalen · prijzen excl. btw · je zit nergens aan vast</p>
+      </section>
+
+      {/* faq */}
+      <section id="vragen" className="scroll-mt-24 border-t bg-secondary/40">
+        <div className="mx-auto max-w-3xl px-6 py-20">
+          <h2 className="text-center text-3xl font-semibold tracking-tight">Veelgestelde vragen</h2>
+          <div className="mt-10 divide-y rounded-2xl border bg-background">
+            {[
+              ["Waar komen de bedrijven vandaan?", "Uit Google Maps-gegevens, aangevuld met de KVK en OpenStreetMap. We doorzoeken het hele gebied dat je kiest, per branche."],
+              ["Hoe komen jullie aan de e-mailadressen?", "We lezen de website van het bedrijf, vragen Hunter en zoeken op internet. Elk adres krijgt zijn bron; wat we niet kunnen controleren, nemen we niet over."],
+              ["Is elke e-mail echt anders?", "Ja. De AI leest per bedrijf de website en verwijst naar concrete dingen die daar staan. Jij keurt elke e-mail goed voordat hij de deur uitgaat."],
+              ["Mag dit wel, zakelijk mailen?", "Zakelijke e-mail aan bedrijven is onder voorwaarden toegestaan. De software helpt met een verzendcontrole, afmeldlink en suppressielijst. Twijfel je over jouw situatie? Vraag juridisch advies."],
+              ["Kan ik opzeggen?", "Ja, maandelijks. Je zit nergens aan vast."],
+            ].map(([q, a]) => (
+              <details key={q} className="px-5 py-4">
+                <summary className="cursor-pointer font-medium">{q}</summary>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{a}</p>
+              </details>
+            ))}
+          </div>
+          <div className="mt-12 text-center">
+            <Button size="lg" asChild><a href="#prijzen">Kies je abonnement <ArrowRight /></a></Button>
           </div>
         </div>
       </section>
-      <section className="mx-auto grid max-w-6xl gap-4 px-6 pb-24 sm:grid-cols-2 lg:grid-cols-4">
-        {features.map((f) => (
-          <div key={f.title} className="rounded-xl border bg-card p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary-soft"><f.icon className="size-4.5 text-primary" /></div>
-            <p className="mt-4 text-[15px] font-semibold">{f.title}</p>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{f.text}</p>
-          </div>
-        ))}
-      </section>
+
+      <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-xs text-muted-foreground">
+        <Logo />
+        <span>© {new Date().getFullYear()} Leadwerk</span>
+      </footer>
     </div>
   );
 }

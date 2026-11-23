@@ -1,4 +1,5 @@
 "use server";
+import { paywallEnabled } from "@/server/usage";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -18,6 +19,8 @@ export async function choosePlanAction(planKey: unknown): Promise<ActionResult<{
     return fail(url);
   }
   if (isProduction()) return fail("not_configured");
+  // Without Stripe nobody can activate a paid plan for free; only the operator can (manual activation).
+  if (paywallEnabled() && !ws.isPlatformAdmin) return fail("payments_unavailable");
   // Demo mode: simulate the subscription change.
   const admin = createAdminClient();
   const now = new Date();
@@ -35,6 +38,7 @@ export async function buyPackAction(packKey: unknown): Promise<ActionResult<{ si
     return fail(url);
   }
   if (isProduction()) return fail("not_configured");
+  if (paywallEnabled() && !ws.isPlatformAdmin) return fail("payments_unavailable");
   const admin = createAdminClient();
   const { data: pack } = await admin.from("credit_packs").select("kind, quantity").eq("key", key).single();
   const { data: sub } = await admin.from("subscriptions").select("current_period_end").eq("org_id", ws.org.id).single();

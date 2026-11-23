@@ -36,7 +36,7 @@ export const handlers: HandlerMap = {
           const r = await findBusinessEmails(orgId, userId, id);
           if (!("error" in r)) found += r.added;
         } catch (err) {
-          if ((err as Error).name === "CreditsExhaustedError") return;
+          if (["CreditsExhaustedError", "PaymentRequiredError"].includes((err as Error).name)) return;
           console.error("[contacts] bulk lookup failed", id, (err as Error).message);
         }
       }

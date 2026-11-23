@@ -36,6 +36,21 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
   return (
     <>
       <PageHeader title={b.title} description={b.subtitle} actions={mode === "live" && sub?.stripe_customer_id && isOwner ? <PortalButton /> : null} />
+      {(() => {
+        const chosen = (plans ?? []).find((p) => p.key === (typeof sp.plan === "string" ? sp.plan : null) && p.is_public);
+        if (!chosen || (sub?.plan_key === chosen.key && sub?.status === "active")) return null;
+        return (
+          <Card className="mb-6 border-primary ring-1 ring-primary">
+            <CardContent className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-base font-semibold">{fmt(b.checkoutTitle, { plan: chosen.name })}</p>
+                <p className="text-sm text-muted-foreground">{fmt(b.checkoutText, { price: formatCurrency(chosen.price_cents, locale) })}</p>
+              </div>
+              {isOwner && <PlanButton planKey={chosen.key} label={b.checkoutCta} />}
+            </CardContent>
+          </Card>
+        );
+      })()}
       <div className="space-y-6">
         {mode !== "live" && <Alert variant="warning"><FlaskConical /><AlertDescription className="text-foreground">{b.demoMode}</AlertDescription></Alert>}
         {sp.checkout === "success" && <Alert variant="success"><CheckCircle2 /><AlertDescription className="text-foreground">{b.checkoutSuccess}</AlertDescription></Alert>}

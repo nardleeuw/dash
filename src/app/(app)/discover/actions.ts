@@ -7,7 +7,7 @@ import { createAdminClient } from "@/server/supabase/admin";
 import { runDiscovery, type SearchResponse } from "@/server/discovery/search";
 import { importGroup, type ImportOutcome } from "@/server/discovery/import";
 import { dispatch } from "@/server/jobs/dispatch";
-import { CreditsExhaustedError } from "@/server/usage";
+import { CreditsExhaustedError, getCreditStatus } from "@/server/usage";
 import { fail, ok, safeAction, type ActionResult } from "@/server/actions";
 import { getLocale } from "@/i18n/server";
 import { rateLimit } from "@/server/rate-limit";
@@ -42,7 +42,7 @@ export async function searchAction(filters: unknown, cursors: unknown): Promise<
       }
       return ok({ pages: res.pages, errors: res.errors, existing });
     } catch (err) {
-      if (err instanceof CreditsExhaustedError) return fail("credits");
+      if (err instanceof CreditsExhaustedError) return fail(err.name === "PaymentRequiredError" ? "payment_required" : "credits");
       throw err;
     }
   });
@@ -62,6 +62,11 @@ export async function importAction(groups: unknown, listId: unknown): Promise<Ac
       const { data } = await supabase.from("lead_lists").select("id").eq("id", list).eq("org_id", ws.org.id).maybeSingle();
       if (!data) return fail("forbidden");
     }
+    // Never start an import that silently stops halfway: check the remaining allowance first.
+    const enrichment = (await getCreditStatus(ws.org.id)).find((c) => c.kind === "enrichment");
+    if (enrichment && enrichment.allowance - enrichment.used < parsed.length) {
+      return fail("import_over_credits", { remaining: [String(Math.max(0, enrichment.allowance - enrichment.used))] });
+    }
     if (parsed.length > SYNC_IMPORT_LIMIT) {
       await dispatch("discovery/import.requested", { orgId: ws.org.id, userId: ws.user.id, groups: parsed, listId: list ?? null });
       return ok({ queued: parsed.length });
@@ -76,7 +81,7 @@ export async function importAction(groups: unknown, listId: unknown): Promise<Ac
       revalidatePath("/leads");
       return ok({ outcomes });
     } catch (err) {
-      if (err instanceof CreditsExhaustedError) return fail("credits");
+      if (err instanceof CreditsExhaustedError) return fail(err.name === "PaymentRequiredError" ? "payment_required" : "credits");
       throw err;
     }
   });

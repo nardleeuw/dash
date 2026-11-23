@@ -48,11 +48,13 @@ export async function signUpAction(_prev: AuthState, formData: FormData): Promis
   if (await limited("signup", 10)) return { error: "rate_limited" };
   const supabase = await createClient();
   const locale = await getLocale();
+  const plan = z.enum(["starter", "growth", "pro"]).safeParse(formData.get("plan"));
+  const afterSignup = plan.success ? `/onboarding?plan=${plan.data}` : "/onboarding";
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      emailRedirectTo: `${env().APP_URL}/auth/confirm?next=/onboarding`,
+      emailRedirectTo: `${env().APP_URL}/auth/confirm?next=${encodeURIComponent(afterSignup)}`,
       data: { full_name: parsed.data.fullName, locale },
     },
   });
@@ -62,7 +64,7 @@ export async function signUpAction(_prev: AuthState, formData: FormData): Promis
     console.error("[signup]", error.message);
     return { error: "unexpected" };
   }
-  if (data.session) redirect(safeNext(formData.get("next") as string | null, "/onboarding"));
+  if (data.session) redirect(safeNext(formData.get("next") as string | null, afterSignup));
   return { message: "checkEmail" };
 }
 
