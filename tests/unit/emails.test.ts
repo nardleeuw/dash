@@ -85,3 +85,17 @@ describe("opportunity choice", () => {
     expect(chooseOpportunity([o("a", false, "S", 0.9), o("b", true, null, 0.5), o("c", true, "S", 0.6)], null)?.id).toBe("c");
   });
 });
+
+describe("writing preferences in the email prompt", () => {
+  it("defaults to subtle personalisation and formal 'u'; respects informal and strong", async () => {
+    const { emailSystemPrompt } = await import("@/server/ai/prompts/email");
+    const base = { id: "x", client_id: null, agency_name: "A", website: null, description: null, services: [], products: null, target_industries: [], ideal_customer_profile: null, unique_selling_proposition: null, tone_of_voice: null, writing_style: null, language: "nl" as const, email_length: "short" as const, call_to_action: null, example_emails: [], avoid_phrases: [], sender_name: null, sender_title: null, signature: null };
+    const def = emailSystemPrompt(base);
+    expect(def).toContain("PERSONALISATION LEVEL: SUBTLE");
+    expect(def).toContain("'u' (formal)");
+    expect(def).toContain("Do not quote their website");
+    const custom = emailSystemPrompt({ ...base, personalization: "strong", formality: "informal" });
+    expect(custom).toContain("PERSONALISATION LEVEL: STRONG");
+    expect(custom).toContain("'je/jij'");
+  });
+});

@@ -225,6 +225,8 @@ const profileSchema = z.object({
   writing_style: z.string().trim().max(300).optional().nullable(),
   language: z.enum(["nl", "en"]),
   email_length: z.enum(["short", "medium", "long"]),
+  personalization: z.enum(["subtle", "balanced", "strong"]).optional(),
+  formality: z.enum(["formal", "informal"]).optional(),
   call_to_action: z.string().trim().max(300).optional().nullable(),
   example_emails: z.array(z.string().max(4000)).max(5),
   avoid_phrases: z.array(z.string().trim().min(1).max(80)).max(50),

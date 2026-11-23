@@ -118,3 +118,35 @@ export async function touchSavedSearchAction(id: unknown, resultCount: unknown) 
   const supabase = await createClient();
   await supabase.from("saved_searches").update({ last_run_at: new Date().toISOString(), last_result_count: count }).eq("id", sid).eq("org_id", ws.org.id);
 }
+
+const PEEK_MAX = 25;
+
+/**
+ * Quick, free email lookup for search results: reads the homepage and contact
+ * page of each result's website (robots.txt respected, SSRF-safe) and returns
+ * the addresses that belong to that business. No credits, no paid providers.
+ */
+export async function peekEmailsAction(sites: unknown): Promise<ActionResult<Record<string, string[]>>> {
+  return safeAction(async () => {
+    const ws = await requireRole("sales_rep");
+    await rateLimit(`peek:${ws.org.id}`, 120);
+    const list = z.array(z.object({ key: z.string().max(400), website: z.string().url().max(500) })).max(PEEK_MAX).parse(sites);
+    const { crawlWebsite } = await import("@/server/research/crawler");
+    const { acceptableForBusiness } = await import("@/server/contacts/emails");
+    const out: Record<string, string[]> = {};
+    const queue = [...list];
+    const worker = async () => {
+      for (let s = queue.shift(); s; s = queue.shift()) {
+        const domain = new URL(s.website).hostname.replace(/^www\./, "").toLowerCase();
+        const res = await Promise.race([
+          crawlWebsite(s.website, { maxPages: 2, focus: "contact" }),
+          new Promise<null>((r) => setTimeout(() => r(null), 12_000)),
+        ]).catch(() => null);
+        const emails = res && res.status === "ok" ? [...new Set(res.pages.flatMap((p) => p.emails))].filter((e) => acceptableForBusiness(e, domain, { publishedByBusiness: true })) : [];
+        out[s.key] = emails.slice(0, 3);
+      }
+    };
+    await Promise.all(Array.from({ length: 8 }, worker));
+    return ok(out);
+  });
+}

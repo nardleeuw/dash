@@ -2,7 +2,7 @@ import { z } from "zod";
 import { UNTRUSTED_DATA_RULES, wrapUntrusted } from "@/server/ai/sanitize";
 import type { AgencyProfile } from "@/server/agency";
 
-export const EMAIL_PROMPT_VERSION = "email-v1";
+export const EMAIL_PROMPT_VERSION = "email-v2";
 
 export const emailSchema = z.object({
   subject: z.string(),
@@ -20,7 +20,15 @@ const LENGTH = { short: "60–110 words", medium: "110–170 words", long: "170�
 
 export function emailSystemPrompt(agency: AgencyProfile) {
   const nl = agency.language === "nl";
-  return `You write ONE individual B2B cold email from a Dutch agency to ONE specific company. It must read as if a thoughtful person researched this company personally.
+  const level = agency.personalization ?? "subtle";
+  const personalization = {
+    subtle: `PERSONALISATION LEVEL: SUBTLE (default). Experienced cold emailers keep personalisation light. Use exactly ONE short, natural reference to this company (one clause or sentence, e.g. something about what they do or one thing you noticed). Do not quote their website, do not list several things you noticed, do not describe their website in detail, and never sound like you studied them. The rest of the email is a clear, professional message about the value for a company like theirs.`,
+    balanced: `PERSONALISATION LEVEL: BALANCED. Use one or two short, specific references to this company. At most one very short quote. Keep the focus on the value for them.`,
+    strong: `PERSONALISATION LEVEL: STRONG. Make it clearly specific to this company: refer to concrete details from the verified observations (at most two short quotes).`,
+  }[level];
+  return `You write ONE individual B2B cold email from a Dutch agency to ONE specific company. It must be professional and relevant to this company, written by a real person.
+
+${personalization}
 
 ${UNTRUSTED_DATA_RULES}
 
@@ -31,12 +39,12 @@ FACTUALITY (non-negotiable):
 - If there is too little verified material, write a shorter, honest email instead of filling it with assumptions.
 
 STYLE:
-- Language: ${nl ? "Dutch (nl-NL), use 'u' unless the tone of voice says otherwise" : "English (UK)"}.
+- Language: ${nl ? `Dutch (nl-NL). Address the reader with ${agency.formality === "informal" ? "'je/jij' (informal, still businesslike)" : "'u' (formal)"}.` : "English (UK)"}.
 - Length of the body: ${LENGTH[agency.email_length]} (excluding signature).
-- Tone of voice: ${agency.tone_of_voice || (nl ? "professioneel, vriendelijk, to the point" : "professional, friendly, to the point")}.
+- Tone of voice: ${agency.tone_of_voice || (nl ? "professioneel, zakelijk en vriendelijk, to the point" : "professional, businesslike, friendly, to the point")}. Correct grammar and spelling; no slang, no hype words, no exclamation marks.
 - Writing style: ${agency.writing_style || "plain, concrete, no jargon"}.
 - Plain text only. No markdown, no emojis, no bullet lists unless natural, no links except the agency website if provided.
-- Open with something specific to THIS company (not "I hope this finds you well").
+- ${level === "subtle" ? "Open naturally and professionally (no \"I hope this finds you well\"); the single company reference may be in the first or second sentence." : "Open with something specific to THIS company (not \"I hope this finds you well\")."}
 - Connect exactly one concrete opportunity to the agency's relevant service.
 - End with this call to action: ${agency.call_to_action || (nl ? "een kort vrijblijvend gesprek van 15 minuten" : "a short 15-minute call")}.
 - Never use these words or phrases: ${agency.avoid_phrases.length ? agency.avoid_phrases.join("; ") : "(none specified)"}.
@@ -44,7 +52,7 @@ STYLE:
 - Sign off with the signature provided (or the sender name).
 - Subject: short (max ~8 words), specific, no clickbait, no ALL CAPS, no "Re:" or "Fwd:".
 - "alt_subject"/"alt_body": a genuinely different second version (different angle or opening), same rules.
-- "personalization_score": your honest 0–100 rating of how specific to this company the email is.`;
+- "personalization_score": your honest 0–100 rating of how specific to this company the email is (for SUBTLE, around 40–60 is right).`;
 }
 
 export function emailUserPrompt(input: {

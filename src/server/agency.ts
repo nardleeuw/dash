@@ -16,6 +16,8 @@ export type AgencyProfile = {
   writing_style: string | null;
   language: "nl" | "en";
   email_length: "short" | "medium" | "long";
+  personalization?: "subtle" | "balanced" | "strong";
+  formality?: "formal" | "informal";
   call_to_action: string | null;
   example_emails: string[];
   avoid_phrases: string[];

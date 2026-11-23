@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
-  Bookmark, Building2, Check, ChevronDown, Globe, Loader2, MapPin, Phone, Search, Star, Trash2, X, Square,
+  AtSign, Bookmark, Building2, Check, ChevronDown, Globe, Loader2, MapPin, Phone, Search, Star, Trash2, X, Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ import { mergeSearchResults, type MergedResult } from "@/server/discovery/dedupe
 import { formatPostalCode } from "@/server/discovery/normalize";
 import type { DiscoveredBusiness, DiscoveryProvider, LocationFilter } from "@/server/providers/types";
 import type { SearchFilters } from "@/lib/discovery-schema";
-import { deleteSavedSearchAction, importAction, saveSearchAction, searchAction, touchSavedSearchAction } from "./actions";
+import { deleteSavedSearchAction, importAction, peekEmailsAction, saveSearchAction, searchAction, touchSavedSearchAction } from "./actions";
 
 /** Keep loading pages automatically until this many results (user can stop or load more). */
 const AUTO_LOAD_TARGET = 400;
@@ -95,6 +95,9 @@ export function DiscoverClient(props: {
 
   const hasMore = providers.some((p) => cursors[p] !== null && cursors[p] !== undefined);
   const [autoLoad, setAutoLoad] = useState(false);
+  // Emails read from each result's website (free, in the background, 20 at a time).
+  const [peeked, setPeeked] = useState<Record<string, string[] | "pending">>({});
+  const peeking = useRef(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const autoLoading = autoLoad && hasMore && raw.length < AUTO_LOAD_TARGET;
   // Keep fetching the next batch (tiles × queries) until enough results or nothing left.
@@ -198,6 +201,21 @@ export function DiscoverClient(props: {
   }
 
   const hasGoogle = merged.some((m) => m.sources.some((s) => s.provider === "google_places"));
+
+  useEffect(() => {
+    if (peeking.current) return;
+    const todo = merged.filter((m) => m.primary.website && !(m.key in peeked)).slice(0, 20);
+    if (!todo.length) return;
+    peeking.current = true;
+    const pendingMarks = Object.fromEntries(todo.map((m) => [m.key, "pending" as const]));
+    void (async () => {
+      setPeeked((p) => ({ ...p, ...pendingMarks }));
+      const r = await peekEmailsAction(todo.map((m) => ({ key: m.key, website: m.primary.website! }))).catch(() => null);
+      const found = r && r.ok ? r.data : {};
+      setPeeked((p) => ({ ...p, ...Object.fromEntries(todo.map((m) => [m.key, found[m.key] ?? []])) }));
+      peeking.current = false;
+    })();
+  }, [merged, peeked]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -421,6 +439,12 @@ export function DiscoverClient(props: {
                                 <Globe className="size-3.5 shrink-0" />{r.website.replace(/^https?:\/\/(www\.)?/, "")}
                               </a>
                             )}
+                            {(() => {
+                              const pe = peeked[m.key];
+                              if (pe === "pending") return <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 className="size-3 animate-spin" />{d.emailLooking}</span>;
+                              if (pe && pe.length) return <span className="mt-0.5 flex max-w-[220px] items-center gap-1.5 truncate"><AtSign className="size-3.5 shrink-0 text-muted-foreground" />{pe[0]}{pe.length > 1 && <span className="text-xs text-muted-foreground">+{pe.length - 1}</span>}</span>;
+                              return null;
+                            })()}
                             {r.phone && <span className="mt-0.5 flex items-center gap-1.5 text-muted-foreground"><Phone className="size-3.5" />{r.phone}</span>}
                           </TableCell>
                           <TableCell className="text-sm">

@@ -16,6 +16,7 @@ type Profile = {
   id: string; agency_name: string; website: string | null; description: string | null; services: { name: string; description?: string | null }[];
   products: string | null; target_industries: string[]; ideal_customer_profile: string | null; unique_selling_proposition: string | null;
   tone_of_voice: string | null; writing_style: string | null; language: "nl" | "en"; email_length: "short" | "medium" | "long";
+  personalization?: "subtle" | "balanced" | "strong"; formality?: "formal" | "informal";
   call_to_action: string | null; example_emails: string[]; avoid_phrases: string[]; sender_name: string | null; sender_title: string | null; signature: string | null;
 };
 
@@ -90,6 +91,23 @@ export function ProfileForm({ profile, industries, canEdit }: { profile: Profile
       <Card>
         <CardHeader><CardTitle>{t.meta.locale === "nl" ? "Schrijfstijl & afzender" : "Writing style & sender"}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>{f.personalization}</Label>
+              <Select value={p.personalization ?? "subtle"} onValueChange={(v) => set("personalization", v as NonNullable<Profile["personalization"]>)} disabled={!canEdit}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{Object.entries(f.personalizationLevels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>{f.formality}</Label>
+              <Select value={p.formality ?? "formal"} onValueChange={(v) => set("formality", v as NonNullable<Profile["formality"]>)} disabled={!canEdit}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{Object.entries(f.formalities).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">{f.personalizationHint}</p>
           {text("tone_of_voice", f.tone)}
           {text("writing_style", f.style)}
           <div className="grid grid-cols-2 gap-3">
