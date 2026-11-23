@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useTransition } from "react";
 import {
   BarChart3, Building2, Check, ChevronsUpDown, CreditCard, Database, Globe, Inbox, KanbanSquare,
-  LayoutDashboard, LogOut, Mail, Megaphone, Plug, Plus, Search, Settings, Users,
+  LayoutDashboard, LogOut, Mail, Plug, Plus, Search, Settings, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "@/components/brand/logo";
@@ -38,7 +38,6 @@ export function Sidebar(props: SidebarProps) {
     { href: "/discover", label: t.nav.discover, icon: Search },
     { href: "/leads", label: t.nav.leads, icon: Database },
     { href: "/emails", label: t.nav.emails, icon: Mail },
-    { href: "/campaigns", label: t.nav.campaigns, icon: Megaphone },
     { href: "/inbox", label: t.nav.inbox, icon: Inbox, badge: props.inboxCount },
     { href: "/crm", label: t.nav.crm, icon: KanbanSquare },
     { href: "/analytics", label: t.nav.analytics, icon: BarChart3 },

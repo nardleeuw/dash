@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useT } from "@/i18n/client";
 import { fmt } from "@/i18n/format";
+import { SendDialog, type MailboxOption } from "./send-dialog";
 import { approveAllEligibleAction, approveEmailsAction, regenerateEmailsAction, rejectEmailsAction } from "./actions";
 
 export type ReviewRow = {
@@ -29,7 +30,7 @@ export type ReviewRow = {
 
 const FILTERS = ["all", "pending", "approved", "rejected", "failed", "issues"] as const;
 
-export function ReviewTable({ rows, filter, batchId, canWrite }: { rows: ReviewRow[]; filter: string; batchId: string | null; canWrite: boolean }) {
+export function ReviewTable({ rows, filter, batchId, canWrite, mailboxes }: { rows: ReviewRow[]; filter: string; batchId: string | null; canWrite: boolean; mailboxes?: MailboxOption[] | null }) {
   const t = useT();
   const e = t.emails;
   const router = useRouter();
@@ -89,6 +90,10 @@ export function ReviewTable({ rows, filter, batchId, canWrite }: { rows: ReviewR
                 <span className="text-sm font-medium">{selected.size} {t.common.selected}</span>
                 <Button size="sm" disabled={pending} onClick={() => start(async () => { const r = await approveEmailsAction(ids); done(r, r.ok ? fmt(e.approved, { count: r.data.count }) : undefined); })}><Check />{e.approveSelected}</Button>
                 <Button size="sm" variant="outline" disabled={pending} onClick={() => setRejectOpen(true)}><X />{e.reject}</Button>
+                {mailboxes && (() => {
+                  const sendable = rows.filter((r) => selected.has(r.id) && r.review_status === "approved" && r.recipient_email).map((r) => r.id);
+                  return sendable.length > 0 ? <SendDialog mailboxes={mailboxes} emailIds={sendable} count={sendable.length} label={e.send.sendSelected} variant="outline" /> : null;
+                })()}
                 <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await regenerateEmailsAction(ids); done(r, r.ok ? fmt(e.requeued, { count: r.data.queued }) : undefined); })}><RotateCcw />{e.regenerate}</Button>
               </>
             ) : (

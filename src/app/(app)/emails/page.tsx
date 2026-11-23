@@ -15,9 +15,12 @@ import { ProfileForm } from "./profile-form";
 import { BatchActions } from "./batch-actions";
 import { GenerateDialog } from "@/app/(app)/leads/generate-button";
 
+import { SendDialog, type MailboxOption } from "./send-dialog";
+import { SendRunControls } from "./send-runs";
+
 export const metadata = { title: "E-mailgenerator" };
 
-const TABS = ["review", "batches", "profile"] as const;
+const TABS = ["review", "batches", "sends", "profile"] as const;
 
 export default async function EmailsPage({ searchParams }: PageProps<"/emails">) {
   const [ws, t] = await Promise.all([getWorkspace(), getDictionary()]);
@@ -28,11 +31,14 @@ export default async function EmailsPage({ searchParams }: PageProps<"/emails">)
   const supabase = await createClient();
   const e = t.emails;
 
-  const [{ data: profiles }, { data: lists }, { data: batches }] = await Promise.all([
+  const [{ data: profiles }, { data: lists }, { data: batches }, { data: mailboxes }, { count: approvedCount }] = await Promise.all([
     supabase.from("agency_profiles").select("*, agency_clients(name)").eq("org_id", ws.org.id).order("created_at"),
     supabase.from("lead_lists").select("id, name").eq("org_id", ws.org.id).order("name"),
     supabase.from("email_generation_batches").select("id, name, source, status, total, created_at, completed_at").eq("org_id", ws.org.id).order("created_at", { ascending: false }).limit(25),
+    supabase.from("email_accounts").select("id, email_address, daily_limit, is_mock").eq("org_id", ws.org.id).eq("status", "active").order("created_at"),
+    supabase.from("generated_emails").select("id", { count: "exact", head: true }).eq("org_id", ws.org.id).eq("sequence_step", 0).eq("review_status", "approved").eq("generation_status", "completed").not("recipient_email", "is", null),
   ]);
+  const canSend = hasMinRole(ws.role, "manager");
 
   const tabLink = (k: string) => (
     <Link key={k} href={`/emails?tab=${k}`} className={`inline-flex h-full items-center rounded-md px-3 text-sm font-medium ${tab === k ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
@@ -65,7 +71,7 @@ export default async function EmailsPage({ searchParams }: PageProps<"/emails">)
         {rows.length === 0 && filter === "all" && !batchId ? (
           <EmptyState icon={Mail} title={e.empty} description={e.emptyText} action={<GenerateDialog scope="list" lists={lists ?? []} profiles={profileOptions} trigger="button" />} />
         ) : (
-          <ReviewTable rows={rows} filter={filter} batchId={batchId} canWrite={ws.role !== "viewer"} />
+          <ReviewTable rows={rows} filter={filter} batchId={batchId} canWrite={ws.role !== "viewer"} mailboxes={canSend ? ((mailboxes ?? []) as MailboxOption[]) : null} />
         )}
       </>
     );
@@ -118,6 +124,40 @@ export default async function EmailsPage({ searchParams }: PageProps<"/emails">)
         })}
       </div>
     );
+  } else if (tab === "sends") {
+    const { data: runs } = await supabase
+      .from("campaigns")
+      .select("id, name, status, created_at, daily_limit, campaign_recipients(status)")
+      .eq("org_id", ws.org.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    const s = e.send;
+    body = (runs ?? []).length === 0 ? (
+      <EmptyState icon={Mail} title={s.runs} description={s.runsEmpty} />
+    ) : (
+      <div className="space-y-3">
+        {(runs ?? []).map((r) => {
+          const rec = (r.campaign_recipients ?? []) as { status: string }[];
+          const n = (st: string[]) => rec.filter((x) => st.includes(x.status)).length;
+          const sent = n(["completed", "replied", "sent"]);
+          const planned = n(["active", "pending"]);
+          return (
+            <Card key={r.id}>
+              <CardContent className="flex flex-wrap items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{r.name}</p>
+                  <p className="text-xs text-muted-foreground">{sent} {s.sent} · {planned} {s.planned} · {n(["stopped", "bounced", "unsubscribed"])} {s.stopped}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant={r.status === "running" ? "success" : "secondary"}>{(t.campaigns.status as Record<string, string>)[r.status] ?? r.status}</Badge>
+                  {canSend && <SendRunControls id={r.id} status={r.status} />}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    );
   } else {
     const requested = typeof sp.profile === "string" ? sp.profile : null;
     const profile = (profiles ?? []).find((p) => p.id === requested) ?? (profiles ?? []).find((p) => !p.client_id) ?? (profiles ?? [])[0];
@@ -136,7 +176,12 @@ export default async function EmailsPage({ searchParams }: PageProps<"/emails">)
       <PageHeader
         title={e.title}
         description={e.subtitle}
-        actions={ws.role !== "viewer" ? <GenerateDialog scope="list" lists={lists ?? []} profiles={profileOptions} trigger="button" /> : null}
+        actions={ws.role !== "viewer" ? (
+          <div className="flex gap-2">
+            {canSend && <SendDialog mailboxes={(mailboxes ?? []) as MailboxOption[]} count={approvedCount ?? 0} variant="outline" />}
+            <GenerateDialog scope="list" lists={lists ?? []} profiles={profileOptions} trigger="button" />
+          </div>
+        ) : null}
       />
       <div className="mb-5 inline-flex h-9 items-center rounded-lg bg-secondary p-1">{TABS.map(tabLink)}</div>
       {body}

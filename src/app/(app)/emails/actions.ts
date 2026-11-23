@@ -245,3 +245,64 @@ export async function saveAgencyProfileAction(id: unknown, input: unknown): Prom
     return ok(null);
   });
 }
+
+/**
+ * Send approved emails without a separate campaign screen: creates a hidden
+ * "send run" (a campaign under the hood) on the chosen mailbox with safe
+ * pacing, adds the emails, runs the compliance gate and starts it.
+ */
+export async function sendApprovedAction(input: unknown): Promise<ActionResult<{ campaignId: string; activated: number; blocked: Record<string, number>; skipped: number; skippedReasons: Record<string, number> }>> {
+  return safeAction(async () => {
+    const ws = await requireRole("manager");
+    await rateLimit(`send:${ws.org.id}`, 10);
+    const p = z.object({ emailIds: z.array(uuid).max(2000).optional(), allApproved: z.boolean().optional(), emailAccountId: uuid }).parse(input);
+    const supabase = await createClient();
+    const { data: account } = await supabase.from("email_accounts").select("id, status, daily_limit, email_address").eq("id", p.emailAccountId).eq("org_id", ws.org.id).maybeSingle();
+    if (!account) return fail("no_account");
+    if (account.status !== "active") return fail("account_inactive");
+
+    let ids = p.emailIds ?? [];
+    if (p.allApproved || !ids.length) {
+      const { data } = await supabase.from("generated_emails").select("id").eq("org_id", ws.org.id).eq("sequence_step", 0).eq("review_status", "approved").eq("generation_status", "completed").not("recipient_email", "is", null).limit(2000);
+      ids = (data ?? []).map((r) => r.id);
+    }
+    if (!ids.length) return fail("nothing_to_send");
+
+    const { sendRunName } = await import("@/server/sending/runs");
+    const admin = createAdminClient();
+    const { data: run, error } = await admin
+      .from("campaigns")
+      .insert({ org_id: ws.org.id, name: sendRunName(account.email_address), email_account_id: account.id, daily_limit: Math.min(account.daily_limit ?? 40, 2000), created_by: ws.user.id })
+      .select("id")
+      .single();
+    if (error || !run) throw error;
+    const { addRecipients, launchCampaign, cancelCampaign } = await import("@/server/sending/campaigns");
+    const added = await addRecipients(ws.org.id, run.id, ids);
+    if (!added.added) {
+      await cancelCampaign(ws.org.id, run.id);
+      return fail("nothing_to_send", { reasons: Object.entries(added.reasons).map(([k, v]) => `${k}:${v}`) });
+    }
+    const launched = await launchCampaign(ws.org.id, run.id);
+    if ("error" in launched && launched.error) {
+      await cancelCampaign(ws.org.id, run.id);
+      return fail(launched.error);
+    }
+    revalidatePath("/emails");
+    const l = launched as { activated: number; blocked: Record<string, number> };
+    return ok({ campaignId: run.id, activated: l.activated, blocked: l.blocked, skipped: added.skipped, skippedReasons: added.reasons });
+  });
+}
+
+/** Pause, resume or stop a send run. */
+export async function sendRunControlAction(id: unknown, action: unknown): Promise<ActionResult<null>> {
+  return safeAction(async () => {
+    const ws = await requireRole("manager");
+    const runId = uuid.parse(id);
+    const a = z.enum(["pause", "resume", "cancel"]).parse(action);
+    const { pauseCampaign, resumeCampaign, cancelCampaign } = await import("@/server/sending/campaigns");
+    const res = a === "pause" ? await pauseCampaign(ws.org.id, runId) : a === "resume" ? await resumeCampaign(ws.org.id, runId) : await cancelCampaign(ws.org.id, runId);
+    if ("error" in res && res.error) return fail(String(res.error));
+    revalidatePath("/emails");
+    return ok(null);
+  });
+}
