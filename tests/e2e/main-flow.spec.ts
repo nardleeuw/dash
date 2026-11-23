@@ -31,7 +31,6 @@ test("agency can go from sign-up to an approved, individually written email", as
   await page.fill("#legal_name", "E2E Agency B.V.");
   await page.fill("#kvk_number", "87654321");
   await page.fill("#postal_address", "Straat 1, 3511 AA Utrecht");
-  await page.fill("#privacy_policy_url", "https://e2e.example/privacy");
   await page.getByRole("button", { name: "Opslaan" }).first().click();
   await expect(page.getByText("Opgeslagen").first()).toBeVisible();
 

@@ -27,7 +27,7 @@ export default async function OverviewPage() {
 
   const [
     businesses, withEmail, emailsTotal, emailsReady, sentMonth, sentTotal, repliesMonth, positiveMonth, unsubscribes,
-    { data: profile }, { data: orgRow }, notices, mailboxes, spend, { data: latestReplies }, { data: latestSends },
+    { data: profile }, { data: orgRow }, mailboxes, spend, { data: latestReplies }, { data: latestSends },
   ] = await Promise.all([
     count(supabase.from("businesses").select("id", { count: "exact", head: true }).eq("org_id", org)),
     count(supabase.from("businesses").select("id, contacts!inner(id)", { count: "exact", head: true }).eq("org_id", org).not("contacts.email", "is", null)),
@@ -40,7 +40,6 @@ export default async function OverviewPage() {
     count(supabase.from("suppression_records").select("id", { count: "exact", head: true }).eq("org_id", org).eq("reason", "unsubscribe")),
     supabase.from("agency_profiles").select("services").eq("org_id", org).is("client_id", null).maybeSingle(),
     supabase.from("organizations").select("legal_name, postal_address").eq("id", org).single(),
-    count(supabase.from("privacy_notices").select("id", { count: "exact", head: true }).eq("org_id", org).eq("is_active", true)),
     count(supabase.from("email_accounts").select("id", { count: "exact", head: true }).eq("org_id", org).eq("status", "active")),
     monthlySpend(org),
     supabase.from("replies").select("id, from_name, from_email, ai_category, ai_summary, received_at, conversation_id").eq("org_id", org).eq("is_auto_reply", false).order("received_at", { ascending: false }).limit(5),
@@ -51,7 +50,7 @@ export default async function OverviewPage() {
 
   const steps = [
     { done: ((profile?.services as unknown[]) ?? []).length > 0, label: o.steps.profile, href: "/settings?tab=sender" },
-    { done: Boolean(orgRow?.legal_name && orgRow?.postal_address) && notices > 0, label: o.steps.company, href: "/settings?tab=organization" },
+    { done: Boolean(orgRow?.legal_name && orgRow?.postal_address), label: o.steps.company, href: "/settings?tab=organization" },
     { done: mailboxes > 0, label: o.steps.mailbox, href: "/integrations" },
     { done: businesses > 0, label: o.steps.leads, href: "/discover" },
     { done: emailsTotal > 0, label: o.steps.emails, href: "/leads" },

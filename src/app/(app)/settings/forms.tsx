@@ -51,7 +51,6 @@ export function OrganizationForm({ initial, canEdit }: { initial: { name: string
         {field("legal_name", s.legalName)}
         {field("kvk_number", s.kvkNumber)}
         {field("postal_address", s.postalAddress)}
-        {field("privacy_policy_url", s.privacyUrl)}
         <div className="space-y-1.5">
           <Label>{s.language}</Label>
           <Select value={f.locale} onValueChange={(v) => setF({ ...f, locale: v })} disabled={!canEdit}>
@@ -171,8 +170,8 @@ export function CompliancePanel(props: {
   const [rules, setRules] = useState(props.rules);
   const lang = t.meta.locale as "nl" | "en";
   const notice = props.notices.find((n) => n.language === lang);
-  const [footer, setFooter] = useState(notice?.email_footer ?? (lang === "nl" ? "U ontvangt dit bericht omdat wij een gedocumenteerde grondslag hebben om u als ondernemer te benaderen. Wij verwerken uw zakelijke contactgegevens volgens onze privacyverklaring. Wilt u geen berichten meer ontvangen? Gebruik de afmeldlink hieronder." : "You receive this message because we have a documented basis to contact you. We process your business contact details according to our privacy notice. Use the link below to unsubscribe."));
-  const [footerUrl, setFooterUrl] = useState(notice?.url ?? "");
+  const [footer, setFooter] = useState(notice?.email_footer ?? (lang === "nl" ? "U ontvangt dit bericht omdat wij denken dat het relevant is voor uw bedrijf. Wilt u geen berichten meer ontvangen? Gebruik de afmeldlink hieronder." : "You receive this message because we think it is relevant for your business. Use the link below to unsubscribe."));
+  const footerUrl = notice?.url ?? "";
   const [supValue, setSupValue] = useState("");
   const [dsr, setDsr] = useState({ email: "", type: "access" });
 
@@ -198,7 +197,6 @@ export function CompliancePanel(props: {
           <CardHeader><CardTitle>{c.privacyNotice}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Textarea rows={5} value={footer} onChange={(e) => setFooter(e.target.value)} disabled={!isAdmin} />
-            <Input placeholder={t.settings.privacyUrl} value={footerUrl} onChange={(e) => setFooterUrl(e.target.value)} disabled={!isAdmin} />
             {isAdmin && <Button size="sm" disabled={pending} onClick={() => start(async () => done(await savePrivacyNoticeAction({ language: lang, email_footer: footer, url: footerUrl })))}><Save />{t.common.save}</Button>}
           </CardContent>
         </Card>

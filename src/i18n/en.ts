@@ -65,14 +65,14 @@ export const en: Dictionary = {
       payments_unavailable: "Online payment will be activated soon. Contact us to get started.",
     },
   },
-  settingsNav: { sender: "Sender & writing style", mailbox: "Mailbox", company: "Company details & privacy", billing: "Plan & usage", account: "My account" },
+  settingsNav: { sender: "Sender & writing style", mailbox: "Mailbox", company: "Company details", billing: "Plan & usage", account: "My account" },
   overviewPage: {
     welcome: "Welcome, {name}",
     welcomePlain: "Welcome",
     subtitle: "Everything at a glance: your businesses, emails, sends, replies and usage.",
     getStarted: "Ready to email",
     stepsDone: "{done} of {total} steps done",
-    steps: { profile: "Fill in your sender profile", company: "Company details & privacy notice", mailbox: "Connect a mailbox", leads: "Find and add businesses", emails: "Create emails", send: "Send your first emails" },
+    steps: { profile: "Fill in your sender profile", company: "Fill in company name & address", mailbox: "Connect a mailbox", leads: "Find and add businesses", emails: "Create emails", send: "Send your first emails" },
     stats: {
       businesses: "Businesses", withEmail: "{count} with an email address",
       emails: "Emails created", ready: "{count} ready to send",

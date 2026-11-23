@@ -64,14 +64,14 @@ export const nl = {
       payments_unavailable: "Online betalen wordt binnenkort geactiveerd. Neem contact met ons op om te starten.",
     },
   },
-  settingsNav: { sender: "Afzender & schrijfstijl", mailbox: "Mailbox", company: "Bedrijfsgegevens & privacy", billing: "Abonnement & verbruik", account: "Mijn account" },
+  settingsNav: { sender: "Afzender & schrijfstijl", mailbox: "Mailbox", company: "Bedrijfsgegevens", billing: "Abonnement & verbruik", account: "Mijn account" },
   overviewPage: {
     welcome: "Welkom, {name}",
     welcomePlain: "Welkom",
     subtitle: "Alles in één oogopslag: je bedrijven, e-mails, verzendingen, reacties en verbruik.",
     getStarted: "Klaar om te mailen",
     stepsDone: "{done} van {total} stappen gedaan",
-    steps: { profile: "Afzenderprofiel invullen", company: "Bedrijfsgegevens & privacyverklaring", mailbox: "Mailbox koppelen", leads: "Bedrijven zoeken en toevoegen", emails: "E-mails maken", send: "Eerste e-mails verzenden" },
+    steps: { profile: "Afzenderprofiel invullen", company: "Bedrijfsnaam & adres invullen", mailbox: "Mailbox koppelen", leads: "Bedrijven zoeken en toevoegen", emails: "E-mails maken", send: "Eerste e-mails verzenden" },
     stats: {
       businesses: "Bedrijven", withEmail: "{count} met e-mailadres",
       emails: "E-mails gemaakt", ready: "{count} klaar om te verzenden",
