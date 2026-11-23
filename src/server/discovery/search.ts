@@ -59,7 +59,8 @@ async function searchKvk(q: SearchRequest, cursor: string | null, orgId: string)
 type Box = [number, number, number, number]; // [south, west, north, east]
 type GoogleTask = { textQuery: string; includedType?: string; rectangle: Box };
 
-const GOOGLE_TASKS_PER_CALL = 4; // tasks fetched in parallel per server call
+const GOOGLE_TASKS_PER_CALL = 4;
+const rejectedGoogleTypes = new Set<string>(); // includedType values Google answered with "Invalid included_type" // tasks fetched in parallel per server call
 const GOOGLE_MAX_PAGES = 3; // Google's own cap (3 × 20 = 60 per query)
 const GOOGLE_MAX_TASKS = 120; // hard cap per search (cost)
 
@@ -120,8 +121,19 @@ async function searchGoogle(q: SearchRequest, cursor: string | null, orgId: stri
     batch.map(async (task) => {
       const out: Awaited<ReturnType<typeof places.client.searchText>>["places"] = [];
       let token: string | undefined;
+      let t = task.includedType && rejectedGoogleTypes.has(task.includedType) ? { ...task, includedType: undefined } : task;
       for (let page = 0; page < GOOGLE_MAX_PAGES; page++) {
-        const res = await places.client.searchText({ ...task, pageToken: token, languageCode: q.language }, orgId);
+        let res;
+        try {
+          res = await places.client.searchText({ ...t, pageToken: token, languageCode: q.language }, orgId);
+        } catch (err) {
+          // Google rejects some types as includedType: remember it and search on the text only.
+          if (t.includedType && err instanceof ProviderError && err.status === 400 && /included_type/i.test(err.message)) {
+            rejectedGoogleTypes.add(t.includedType);
+            t = { ...t, includedType: undefined };
+            res = await places.client.searchText({ ...t, pageToken: token, languageCode: q.language }, orgId);
+          } else throw err;
+        }
         out.push(...res.places);
         if (!res.nextPageToken || res.places.length < 20) break;
         token = res.nextPageToken;

@@ -137,7 +137,7 @@ export const INDUSTRIES: Industry[] = [
   I("auto", "car_wash", "Autowasstraten & detailing", "Car wash & detailing", ["autowasstraat", "car wash"], { type: "car_wash", variants: [["auto detailing", "autopoetsbedrijf"], ["car detailing"]], aliases: ["wassen", "detailing", "poetsen"], osm: ['["amenity"="car_wash"]'] }),
   I("auto", "car_rental", "Auto- & busverhuur", "Car & van rental", ["autoverhuur", "car rental"], { type: "car_rental", variants: [["busverhuur", "aanhangwagen verhuur"], ["van rental"]], aliases: ["verhuur", "busje huren"], osm: ['["amenity"="car_rental"]'] }),
   I("auto", "motorcycle", "Motor- & scooterzaken", "Motorcycle & scooter shops", ["motorzaak", "motorcycle dealer"], { variants: [["scooterwinkel"], ["scooter shop"]], aliases: ["motor", "scooter"], osm: ['["shop"="motorcycle"]'] }),
-  I("auto", "driving_school", "Rijscholen", "Driving schools", ["rijschool", "driving school"], { sbi: ["8553"], type: "driving_school", aliases: ["rijles", "rijbewijs"], osm: ['["amenity"="driving_school"]'] }),
+  I("auto", "driving_school", "Rijscholen", "Driving schools", ["rijschool", "driving school"], { sbi: ["8553"], aliases: ["rijles", "rijbewijs"], osm: ['["amenity"="driving_school"]'] }),
   I("auto", "taxi_transport", "Taxi- & transportbedrijven", "Taxi & transport companies", ["taxibedrijf", "taxi service"], { sbi: ["4932", "4941"], variants: [["transportbedrijf", "koeriersdienst"], ["courier"]], aliases: ["taxi", "transport", "koerier", "logistiek"], osm: ['["office"="taxi"]', '["office"="logistics"]'] }),
 
   // Zakelijke dienstverlening
