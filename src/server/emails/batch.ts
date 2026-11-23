@@ -74,7 +74,7 @@ export async function createBatch(input: CreateBatchInput) {
     for (const businessId of chunk) {
       const e = byBusiness.get(businessId);
       if (!e) inserts.push({ org_id: input.orgId, batch_id: batch.id, business_id: businessId, agency_profile_id: input.agencyProfileId, language: input.language, generation_status: "queued", opportunity: extra });
-      else if (input.mode === "regenerate_all" || e.generation_status === "failed") requeue.push(e.id);
+      else if (input.mode === "regenerate_all" || e.generation_status === "failed" || e.generation_status === "skipped") requeue.push(e.id);
       else skipped++;
     }
     if (inserts.length) {

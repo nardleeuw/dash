@@ -76,7 +76,7 @@ export async function ingestInbound(orgId: string, accountId: string, m: Inbound
       const res = await structured({
         task: "replies", orgId, system: replySystemPrompt(locale),
         user: replyUserPrompt({ originalSubject: out.subject, originalBody: out.body_text, reply: m.text }),
-        schema: replySchema, schemaName: "reply_classification", mock: () => heuristicReply(m.text, m.subject, locale), maxOutputTokens: 600,
+        schema: replySchema, schemaName: "reply_classification", mock: () => heuristicReply(m.text, m.subject, locale), maxOutputTokens: 1500,
       });
       ai = res.data;
     } catch (err) {

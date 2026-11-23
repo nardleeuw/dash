@@ -115,6 +115,7 @@ export async function runResearch({ orgId, userId, businessId, analysisId }: { o
         schemaName: "company_research",
         mock: () => mockResearch(pagePayload, signals, locale),
         maxOutputTokens: 5000,
+        reasoningEffort: "medium",
       });
       validated = validateResearch(res.data, pages);
       model = res.model;

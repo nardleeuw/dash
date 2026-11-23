@@ -50,6 +50,8 @@ export async function structured<S extends z.ZodType>(params: {
   maxOutputTokens?: number;
   /** Let the model use OpenAI's hosted web search (results biased to the Netherlands). */
   webSearch?: boolean;
+  /** Reasoning effort for reasoning models; "low" keeps hidden reasoning from eating the output budget. */
+  reasoningEffort?: "low" | "medium" | "high";
 }): Promise<StructuredResult<z.infer<S>>> {
   const mode = providerMode("openai");
   if (mode === "disabled") throw new AiUnavailableError("disabled");
@@ -62,24 +64,34 @@ export async function structured<S extends z.ZodType>(params: {
   const model = modelFor(params.task);
   const started = Date.now();
   try {
-    const res = await openai().responses.parse({
-      model,
-      store: false,
-      input: [
-        { role: "system", content: params.system },
-        { role: "user", content: params.user },
-      ],
-      text: { format: zodTextFormat(params.schema, params.schemaName) },
-      max_output_tokens: params.maxOutputTokens ?? 4000,
-      ...(params.webSearch ? { tools: [{ type: "web_search" as const, user_location: { type: "approximate" as const, country: "NL" } }] } : {}),
-    });
-    const searches = params.webSearch ? res.output.filter((o) => o.type === "web_search_call").length : 0;
-    const input = res.usage?.input_tokens ?? 0;
-    const output = res.usage?.output_tokens ?? 0;
-    void logApiUsage({
-      orgId: params.orgId, provider: "openai", operation: params.task, inputTokens: input, outputTokens: output,
-      costMicros: estimateCostMicros(model, input, output) + searches * WEB_SEARCH_CALL_MICROS, latencyMs: Date.now() - started,
-    });
+    const call = async (maxTokens: number) => {
+      const r = await openai().responses.parse({
+        model,
+        store: false,
+        input: [
+          { role: "system", content: params.system },
+          { role: "user", content: params.user },
+        ],
+        text: { format: zodTextFormat(params.schema, params.schemaName) },
+        max_output_tokens: maxTokens,
+        ...(/^(gpt-5|o\d)/.test(model) ? { reasoning: { effort: params.reasoningEffort ?? "low" } } : {}),
+        ...(params.webSearch ? { tools: [{ type: "web_search" as const, user_location: { type: "approximate" as const, country: "NL" } }] } : {}),
+      });
+      const searches = params.webSearch ? r.output.filter((o) => o.type === "web_search_call").length : 0;
+      const inTok = r.usage?.input_tokens ?? 0;
+      const outTok = r.usage?.output_tokens ?? 0;
+      void logApiUsage({
+        orgId: params.orgId, provider: "openai", operation: params.task, inputTokens: inTok, outputTokens: outTok,
+        costMicros: estimateCostMicros(model, inTok, outTok) + searches * WEB_SEARCH_CALL_MICROS, latencyMs: Date.now() - started,
+      });
+      return { r, inTok, outTok };
+    };
+    const budget = params.maxOutputTokens ?? 4000;
+    let { r: res, inTok: input, outTok: output } = await call(budget);
+    // Reasoning tokens count towards the budget; when the answer was cut off, retry once with more room.
+    if (!res.output_parsed && res.incomplete_details?.reason === "max_output_tokens") {
+      ({ r: res, inTok: input, outTok: output } = await call(budget * 2));
+    }
     if (!res.output_parsed) throw new AiUnavailableError("invalid_output", "model returned no parseable output");
     return { data: params.schema.parse(res.output_parsed), model: res.model ?? model, isMock: false, inputTokens: input, outputTokens: output };
   } catch (err) {

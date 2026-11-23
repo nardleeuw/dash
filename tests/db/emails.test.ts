@@ -122,6 +122,24 @@ describe("one-step outreach: find addresses + optional AI research", () => {
     expect(email!.recipient_email).toBeTruthy();
   });
 
+  it("skips a business without an email address: nothing is written or charged", async () => {
+    const { createBatch } = await import("@/server/emails/batch");
+    const { generateEmailById } = await import("@/server/emails/generate");
+    const { data: b } = await admin.from("businesses").insert({ org_id: orgId, name: "Geen Adres BV", industry: "dental" }).select("id").single();
+    const res = await createBatch({ orgId, userId, businessIds: [b!.id], agencyProfileId: profileId, source: "selection", mode: "missing_only", language: "nl", options: { research: false, findEmails: false } });
+    const { data: row } = await admin.from("generated_emails").select("id").eq("batch_id", res.batchId).single();
+    expect(await generateEmailById(orgId, row!.id)).toEqual({ status: "skipped" });
+    const { data: email } = await admin.from("generated_emails").select("generation_status, error, body").eq("id", row!.id).single();
+    expect(email).toMatchObject({ generation_status: "skipped", error: "no_email", body: null });
+    const { count: charged } = await admin.from("usage_records").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("reference_id", row!.id);
+    expect(charged).toBe(0);
+
+    // Once an address exists, generating again picks the skipped email up.
+    await admin.from("contacts").insert({ org_id: orgId, business_id: b!.id, email: `info@geenadres${Date.now()}.nl`, email_type: "generic", recipient_category: "legal_entity_generic", source: "manual" });
+    const again = await createBatch({ orgId, userId, businessIds: [b!.id], agencyProfileId: profileId, source: "selection", mode: "missing_only", language: "nl", options: { research: false } });
+    expect(again.queued).toBe(1);
+  });
+
   it("never generates the same email twice concurrently", async () => {
     const { createBatch } = await import("@/server/emails/batch");
     const { generateEmailById } = await import("@/server/emails/generate");

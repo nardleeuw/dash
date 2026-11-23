@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fmt } from "@/i18n/format";
 import { Mail } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,9 @@ export default async function EmailsPage({ searchParams }: PageProps<"/emails">)
   const byEmail = new Map<string, { status: string; stop_reason: string | null }>();
   for (const r of recipients ?? []) byEmail.set(r.generated_email_id as string, r);
 
-  const items: EmailItem[] = (rows ?? []).map((r) => {
+  // Businesses without an email address are skipped (nothing written, nothing charged) and not listed.
+  const skipped = (rows ?? []).filter((r) => r.generation_status === "skipped").length;
+  const items: EmailItem[] = (rows ?? []).filter((r) => r.generation_status !== "skipped").map((r) => {
     const rec = byEmail.get(r.id);
     let state: EmailState;
     let detail: string | null = null;
@@ -74,6 +77,7 @@ export default async function EmailsPage({ searchParams }: PageProps<"/emails">)
               </Link>
             ))}
           </div>
+          {skipped > 0 && <p className="mb-3 text-sm text-muted-foreground">{fmt(l.skippedNoEmail, { count: skipped })}</p>}
           <EmailList items={shown} mailboxes={(mailboxes ?? []) as MailboxOption[]} canSend={hasMinRole(ws.role, "manager")} />
         </>
       )}

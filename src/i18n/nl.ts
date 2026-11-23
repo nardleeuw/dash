@@ -345,6 +345,7 @@ export const nl = {
       emptyText: "Selecteer bedrijven in je leaddatabase en klik op E-mails maken.",
       toLeads: "Naar leaddatabase",
       summary: "{total} e-mails · {ready} klaar om te verzenden",
+      skippedNoEmail: "{count} bedrijven overgeslagen: geen e-mailadres gevonden. Hiervoor is geen e-mail geschreven en niets gerekend.",
       selected: "{count} geselecteerd",
       sendAll: "Alles verzenden",
       rewrite: "Opnieuw schrijven",
@@ -356,7 +357,7 @@ export const nl = {
       factWarning: "Controleer deze e-mail: de feitencheck vond iets dat niet op de website staat.",
       filters: { all: "Alle", ready: "Klaar om te verzenden", sent: "Verzonden & ingepland" },
       states: { generating: "Wordt gemaakt", ready: "Klaar", no_recipient: "Geen e-mailadres", scheduled: "Ingepland", sent: "Verzonden", blocked: "Niet verzonden", failed: "Mislukt" },
-      errors: { credits_exhausted: "Tegoed op", payment_required: "Abonnement nodig", spend_cap: "Maandplafond bereikt", missing_business_or_profile: "Afzenderprofiel ontbreekt" },
+      errors: { credits_exhausted: "Tegoed op", payment_required: "Abonnement nodig", spend_cap: "Maandplafond bereikt", missing_business_or_profile: "Afzenderprofiel ontbreekt", ai_invalid_output: "AI-antwoord onvolledig, probeer opnieuw", ai_quota: "OpenAI-tegoed op" },
       blockReasons: { suppressed: "Afgemeld", kvk_non_mailing: "Wil geen reclame (KVK)", no_legal_basis: "Geen grondslag", invalid_address: "Ongeldig adres", no_recipient: "Geen adres", not_approved: "Niet goedgekeurd", sender_identity: "Bedrijfsgegevens ontbreken", privacy_notice: "Privacyverklaring ontbreekt", mock_content: "Demo-inhoud" },
     },
     dialog: {

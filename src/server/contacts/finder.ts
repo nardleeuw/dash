@@ -69,6 +69,7 @@ async function defaultWebSearch(b: { name: string; city: string | null; website:
       // Demo mode never invents people or addresses.
       mock: () => ({ emails: [], people: [] }),
       maxOutputTokens: 3000,
+      reasoningEffort: "medium",
       webSearch: true,
     });
     return { findings: res.data, isMock: res.isMock };

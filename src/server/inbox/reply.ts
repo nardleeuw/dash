@@ -61,7 +61,7 @@ Suggested next step: ${last?.suggested_next_step ?? ""}
 Category: ${last?.ai_category ?? "unknown"}
 Their message:
 ${wrapUntrusted("untrusted_email_content", last?.body_text ?? "", 3000)}`,
-    schema: replyDraftSchema, schemaName: "reply_draft", maxOutputTokens: 500,
+    schema: replyDraftSchema, schemaName: "reply_draft", maxOutputTokens: 1500,
     mock: () => ({ body: nl ? `Beste ${name ?? "heer/mevrouw"},\n\nDank voor uw reactie. ${last?.ai_category === "meeting_request" || last?.ai_category === "interested" ? "Zullen we een kort gesprek inplannen? Past dinsdag of donderdag u?" : "Ik kom graag bij u terug met meer informatie."}\n\nMet vriendelijke groet,\n${agency?.sender_name ?? agency?.agency_name ?? ""}` : `Dear ${name ?? "Sir/Madam"},\n\nThank you for your reply. Shall we schedule a short call?\n\nKind regards,\n${agency?.sender_name ?? ""}` }),
   });
   void conv;

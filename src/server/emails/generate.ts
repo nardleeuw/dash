@@ -86,15 +86,7 @@ export async function generateEmailById(orgId: string, emailId: string) {
     .select("id");
   if (!claimed?.length) return { status: "busy" };
 
-  try {
-    await consumeCredits({ orgId, kind: "email_generation", idempotencyKey: `gen:${emailId}:v${email.version}`, referenceType: "generated_email", referenceId: emailId });
-  } catch (err) {
-    if (err instanceof CreditsExhaustedError) {
-      await setStatus("failed", { error: err.name === "PaymentRequiredError" ? "payment_required" : err.name === "SpendCapReachedError" ? "spend_cap" : "credits_exhausted" });
-      return { status: "failed" };
-    }
-    throw err;
-  }
+  const creditError = (err: Error) => err.name === "PaymentRequiredError" ? "payment_required" : err.name === "SpendCapReachedError" ? "spend_cap" : "credits_exhausted";
 
   const { data: batchRow } = email.batch_id
     ? await admin.from("email_generation_batches").select("options").eq("id", email.batch_id).maybeSingle()
@@ -108,10 +100,32 @@ export async function generateEmailById(orgId: string, emailId: string) {
       try {
         await findBusinessEmails(orgId, null, email.business_id);
       } catch (err) {
+        if (err instanceof CreditsExhaustedError) {
+          await setStatus("failed", { error: creditError(err) });
+          return { status: "failed" };
+        }
         console.error("[emails] address lookup failed", email.business_id, (err as Error).message);
       }
     }
   }
+
+  // No address means nothing can be sent: skip before any research or writing (and before charging).
+  const { count: withEmail } = await admin.from("contacts").select("id", { count: "exact", head: true }).eq("business_id", email.business_id).not("email", "is", null);
+  if (!withEmail) {
+    await setStatus("skipped", { error: "no_email" });
+    return { status: "skipped" };
+  }
+
+  try {
+    await consumeCredits({ orgId, kind: "email_generation", idempotencyKey: `gen:${emailId}:v${email.version}`, referenceType: "generated_email", referenceId: emailId });
+  } catch (err) {
+    if (err instanceof CreditsExhaustedError) {
+      await setStatus("failed", { error: creditError(err) });
+      return { status: "failed" };
+    }
+    throw err;
+  }
+
 
   const [{ data: b }, profileRow, { data: contacts }] = await Promise.all([
     admin.from("businesses").select("*").eq("id", email.business_id).single(),
@@ -188,7 +202,7 @@ export async function generateEmailById(orgId: string, emailId: string) {
       }),
       schema: emailSchema,
       schemaName: "personalized_email",
-      maxOutputTokens: 2500,
+      maxOutputTokens: 6000,
       mock: () => mockEmail({ agency, companyName: b.name, recipientName, opportunity, observations, sequenceStep: email.sequence_step }),
     });
     output = res.data;
@@ -199,7 +213,7 @@ export async function generateEmailById(orgId: string, emailId: string) {
       await setStatus("failed", { error: "ai_quota" });
       return { status: "failed" };
     }
-    await setStatus("failed", { error: (err as Error).message?.slice(0, 300) ?? "ai_error" });
+    await setStatus("failed", { error: err instanceof AiUnavailableError && err.reason === "invalid_output" ? "ai_invalid_output" : (err as Error).message?.slice(0, 300) ?? "ai_error" });
     if ((email.attempts ?? 0) + 1 < 3) throw new RetryableGenerationError((err as Error).message);
     return { status: "failed" };
   }

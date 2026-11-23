@@ -346,6 +346,7 @@ export const en: Dictionary = {
       emptyText: "Select businesses in your lead database and click Create emails.",
       toLeads: "Go to lead database",
       summary: "{total} emails · {ready} ready to send",
+      skippedNoEmail: "{count} businesses skipped: no email address found. No email was written and nothing was charged.",
       selected: "{count} selected",
       sendAll: "Send all",
       rewrite: "Rewrite",
@@ -357,7 +358,7 @@ export const en: Dictionary = {
       factWarning: "Check this email: the fact-check found something that is not on the website.",
       filters: { all: "All", ready: "Ready to send", sent: "Sent & scheduled" },
       states: { generating: "Being written", ready: "Ready", no_recipient: "No email address", scheduled: "Scheduled", sent: "Sent", blocked: "Not sent", failed: "Failed" },
-      errors: { credits_exhausted: "Out of credits", payment_required: "Plan required", spend_cap: "Monthly cap reached", missing_business_or_profile: "Sender profile missing" },
+      errors: { credits_exhausted: "Out of credits", payment_required: "Plan required", spend_cap: "Monthly cap reached", missing_business_or_profile: "Sender profile missing", ai_invalid_output: "AI answer incomplete, try again", ai_quota: "OpenAI credit exhausted" },
       blockReasons: { suppressed: "Unsubscribed", kvk_non_mailing: "No advertising (KVK)", no_legal_basis: "No legal basis", invalid_address: "Invalid address", no_recipient: "No address", not_approved: "Not approved", sender_identity: "Company details missing", privacy_notice: "Privacy notice missing", mock_content: "Demo content" },
     },
     dialog: {
