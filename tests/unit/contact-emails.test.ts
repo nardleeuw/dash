@@ -94,3 +94,10 @@ describe("web search findings", () => {
     expect(r.rejected).toBe(3);
   });
 });
+
+describe("glued text", () => {
+  it("drops a phone number glued in front of an address", () => {
+    const html = `<body><p>Bel <span>030 6000090</span><a href="mailto:info@dental.nl">info@dental.nl</a></p><p>Tel 0306000090info@dental.nl</p></body>`;
+    expect(extractEmailsFromHtml(html)).toEqual(["info@dental.nl"]);
+  });
+});

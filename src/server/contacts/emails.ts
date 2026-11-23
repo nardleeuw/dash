@@ -63,6 +63,16 @@ export function decodeCfEmail(hex: string): string | null {
   return out;
 }
 
+/**
+ * Drop addresses that are another address with digits glued in front, e.g.
+ * "0612345678info@bedrijf.nl" next to "info@bedrijf.nl" (a phone number
+ * directly before the address in the page text).
+ */
+export function dropGluedPrefixes(emails: string[]): string[] {
+  const set = new Set(emails);
+  return emails.filter((e) => ![...set].some((o) => o !== e && e.endsWith(o) && /^[\d\s().+-]+$/.test(e.slice(0, e.length - o.length))));
+}
+
 /** Addresses in visible text, including "[at]"/"(at)"/"[dot]" notations. */
 export function emailsFromText(text: string): string[] {
   const out = new Set<string>();
@@ -114,7 +124,7 @@ export function visibleText($: CheerioAPI): string {
 export function extractEmailsFromHtml(html: string): string[] {
   const $ = cheerio.load(html);
   const fromMarkup = emailsFromMarkup($);
-  return [...new Set([...fromMarkup, ...emailsFromText(visibleText($))])];
+  return dropGluedPrefixes([...new Set([...fromMarkup, ...emailsFromText(visibleText($))])]);
 }
 
 export function emailDomain(email: string): string {

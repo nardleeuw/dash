@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { emailsFromMarkup, emailsFromText, visibleText } from "@/server/contacts/emails";
+import { dropGluedPrefixes, emailsFromMarkup, emailsFromText, visibleText } from "@/server/contacts/emails";
 
 /** Structured extraction of a single HTML page. Pure — unit tested. */
 export type PageExtract = {
@@ -88,7 +88,7 @@ export function extractPage(html: string, pageUrl: string): PageExtract {
     forms,
     scripts: [...scripts, ...(inlineScripts ? ["inline:" + inlineScripts.slice(0, 20_000)] : [])],
     iframes,
-    emails: [...emails].slice(0, 20),
+    emails: dropGluedPrefixes([...emails]).slice(0, 20),
     phones: [...phones].slice(0, 10),
     socials: [...new Set(links.map((l) => l.href).filter((h) => SOCIAL.test(h)))].slice(0, 10),
     jsonLdTypes: [...new Set(jsonLdTypes)],
