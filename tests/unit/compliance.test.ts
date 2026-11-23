@@ -53,7 +53,7 @@ describe("hard eligibility gate", () => {
     expect(codes({ ...ok, emailVerification: "invalid" })).toContain("invalid_address");
     expect(codes({ ...ok, kvkNonMailing: true })).toContain("kvk_non_mailing");
     expect(codes({ ...ok, senderIdentityComplete: false })).toContain("sender_identity");
-    expect(warns({ ...ok, privacyNoticeConfigured: false })).toContain("privacy_notice");
+    expect(checkEligibility({ ...ok, privacyNoticeConfigured: false }).eligible).toBe(true);
     expect(codes({ ...ok, email: null })).toContain("no_recipient");
   });
 

@@ -18,8 +18,8 @@ beforeAll(async () => {
     createTestUser("viewer"),
     createTestUser("rep"),
   ]);
-  orgA = await createOrgFor(alice, `Agency A ${Date.now()}`);
-  orgB = await createOrgFor(bob, `Agency B ${Date.now()}`);
+  orgA = await createOrgFor(alice, `Agency A ${Date.now()}`, { paid: false });
+  orgB = await createOrgFor(bob, `Agency B ${Date.now()}`, { paid: false });
   await admin.from("subscriptions").update({ limit_overrides: { users: 10 } }).eq("org_id", (await Promise.resolve(orgA)));
   await addMember(orgA, viewer, "viewer");
   await addMember(orgA, rep, "sales_rep");
@@ -180,7 +180,8 @@ describe("credits", () => {
   });
 
   it("enforces the allowance and is idempotent", async () => {
-    // Trial plan: research = 25
+    // Unpaid workspaces have no allowance; give this one 25 research credits.
+    await admin.from("subscriptions").update({ limit_overrides: { users: 10, research: 25 } }).eq("org_id", orgA);
     const key = `test-${Date.now()}`;
     const first = await admin.rpc("consume_credits", { p_org: orgA, p_kind: "research", p_quantity: 20, p_idempotency_key: key });
     expect(first.data).toBe(true);

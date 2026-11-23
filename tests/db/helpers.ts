@@ -21,9 +21,13 @@ export async function createTestUser(label: string): Promise<TestUser> {
   return { id: data.user!.id, email, client };
 }
 
-export async function createOrgFor(user: TestUser, name: string): Promise<string> {
+/** Creates a workspace that has paid (usage plan, active), like a real customer after checkout. */
+export async function createOrgFor(user: TestUser, name: string, opts: { paid?: boolean } = {}): Promise<string> {
   const { data, error } = await user.client.rpc("create_organization", { p_name: name, p_slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-") });
   if (error) throw error;
+  if (opts.paid !== false) {
+    await admin.from("subscriptions").update({ plan_key: "usage", status: "active", trial_ends_at: null, setup_paid_at: new Date().toISOString(), limit_overrides: { spend_cap_cents: 0 } }).eq("org_id", data as string);
+  }
   return data as string;
 }
 

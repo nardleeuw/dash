@@ -14,8 +14,8 @@ let orgId: string;
 beforeAll(async () => {
   owner = await createTestUser("billing");
   outsider = await createTestUser("outsider");
-  orgId = await createOrgFor(owner, `Billing Org ${Date.now()}`);
-  await createOrgFor(outsider, `Other Org ${Date.now()}`);
+  orgId = await createOrgFor(owner, `Billing Org ${Date.now()}`, { paid: false });
+  await createOrgFor(outsider, `Other Org ${Date.now()}`, { paid: false });
   await admin.from("plans").update({ stripe_price_id: "price_test_growth" }).eq("key", "growth");
 });
 
@@ -64,7 +64,7 @@ describe("subscriptions & credits", () => {
     const { data: grants } = await admin.from("credit_grants").select("quantity").eq("org_id", orgId).eq("kind", "email_generation");
     expect(grants).toEqual([{ quantity: 250 }]);
     const { data: status } = await owner.client.rpc("credit_status", { p_org: orgId });
-    expect((status as { kind: string; allowance: number }[]).find((s) => s.kind === "email_generation")!.allowance).toBe(25 + 250);
+    expect((status as { kind: string; allowance: number }[]).find((s) => s.kind === "email_generation")!.allowance).toBe(0 + 250); // unpaid workspace: no base allowance
   });
 
   it("applies subscription updates and payment failures", async () => {
