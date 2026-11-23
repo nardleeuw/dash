@@ -85,7 +85,7 @@ export class GooglePlacesClient implements PlacesApi {
 }
 
 function component(p: GooglePlace, type: string) {
-  return p.addressComponents?.find((c) => c.types.includes(type))?.longText ?? null;
+  return p.addressComponents?.find((c) => c.types?.includes(type))?.longText ?? null;
 }
 
 export function mapPlace(p: GooglePlace, isMock = false): DiscoveredBusiness {

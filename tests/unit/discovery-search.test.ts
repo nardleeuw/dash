@@ -57,3 +57,11 @@ describe("industry taxonomy", () => {
     for (const i of INDUSTRIES) for (const f of i.osm) expect(f).toMatch(/^\["[a-z:_]+"="[a-z_;:]+"\]$/);
   });
 });
+
+describe("Google place mapping", () => {
+  it("survives address components without types", async () => {
+    const { mapPlace } = await import("@/server/providers/google-places/client");
+    const m = mapPlace({ id: "x", displayName: { text: "Café Test" }, addressComponents: [{ longText: "5211 AB", shortText: "5211 AB" } as never, { longText: "'s-Hertogenbosch", shortText: "Den Bosch", types: ["locality"] }] }, false);
+    expect(m).toMatchObject({ name: "Café Test", address: { city: "'s-Hertogenbosch", postalCode: null } });
+  });
+});

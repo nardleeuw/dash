@@ -137,7 +137,14 @@ async function searchGoogle(q: SearchRequest, cursor: string | null, orgId: stri
   const done = start + batch.length;
   return {
     provider: "google_places",
-    results: unique.map((p) => mapPlace(p, places.isMock)),
+    results: unique.flatMap((p) => {
+      try {
+        return [mapPlace(p, places.isMock)];
+      } catch (err) {
+        console.error("[discovery] could not map place", p.id, err);
+        return [];
+      }
+    }),
     nextCursor: done < tasks.length ? String(done) : null,
     progress: { done, total: tasks.length },
     notice: places.isMock ? "mock" : undefined,
@@ -236,7 +243,7 @@ export async function runDiscovery(orgId: string, userId: string, q: SearchReque
       const err = s.reason;
       if (err?.name === "CreditsExhaustedError") throw err;
       console.error("[discovery]", providers[i], err);
-      const kind = err instanceof ProviderError ? `provider_error_${err.status ?? "network"}` : `provider_error:${String(err?.name ?? "Error").slice(0, 40)}${err?.code ? ":" + String(err.code).slice(0, 20) : ""}${err instanceof TypeError ? ":" + String(err.message).slice(0, 120) : ""}`;
+      const kind = err instanceof ProviderError ? `provider_error_${err.status ?? "network"}` : `provider_error:${String(err?.name ?? "Error").slice(0, 40)}${err?.code ? ":" + String(err.code).slice(0, 20) : ""}`;
       errors.push({ provider: providers[i], message: kind });
     }
   });
