@@ -10,7 +10,7 @@ import { OPENAI_PRICE_PER_MTOK } from "@/config/costs";
 export type AiTask = "research" | "scoring" | "email" | "replies";
 
 export class AiUnavailableError extends Error {
-  constructor(public reason: "quota" | "disabled" | "invalid_output" | "error", message?: string) {
+  constructor(public reason: "quota" | "invalid_key" | "disabled" | "invalid_output" | "error", message?: string) {
     super(message ?? `AI unavailable: ${reason}`);
     this.name = "AiUnavailableError";
   }
@@ -83,6 +83,7 @@ export async function structured<S extends z.ZodType>(params: {
     const e = err as { status?: number; code?: string; type?: string; message?: string };
     void logApiUsage({ orgId: params.orgId, provider: "openai", operation: params.task, status: "error", latencyMs: Date.now() - started, error: e.message });
     if (e.code === "insufficient_quota" || e.type === "insufficient_quota") throw new AiUnavailableError("quota", "OpenAI account has no remaining quota");
+    if (e.status === 401 || e.code === "invalid_api_key") throw new AiUnavailableError("invalid_key", "OpenAI API key is invalid");
     throw new AiUnavailableError("error", e.message);
   }
 }

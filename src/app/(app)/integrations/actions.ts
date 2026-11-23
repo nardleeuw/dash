@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireRole } from "@/server/auth";
+import { getWorkspace, requireRole } from "@/server/auth";
 import { createClient } from "@/server/supabase/server";
 import { createAdminClient } from "@/server/supabase/admin";
 import { fail, ok, safeAction, type ActionResult } from "@/server/actions";
@@ -10,6 +10,7 @@ import { SmtpProvider } from "@/server/sending/providers/smtp";
 import { isProduction } from "@/server/env";
 import { validateUrlShape } from "@/server/research/safe-fetch";
 import { rateLimit } from "@/server/rate-limit";
+import { checkProviders, type HealthResult } from "@/server/providers/health";
 
 const smtpSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -110,5 +111,15 @@ export async function removeAccountAction(id: unknown): Promise<ActionResult<nul
     if (error) return fail("in_use");
     revalidatePath("/integrations");
     return ok(null);
+  });
+}
+
+/** Platform admins: verify the platform API keys (OpenAI, Google Places, Hunter). */
+export async function checkProvidersAction(): Promise<ActionResult<HealthResult[]>> {
+  return safeAction(async () => {
+    const ws = await getWorkspace();
+    if (!ws.isPlatformAdmin) return fail("forbidden");
+    await rateLimit(`provider-check:${ws.user.id}`, 10, 600);
+    return ok(await checkProviders());
   });
 }

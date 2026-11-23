@@ -63,7 +63,7 @@ export async function ProfileExtraTabs({ businessId, canWrite }: { businessId: s
         </div>
 
         {research.injectionDetected && <Alert variant="warning"><ShieldAlert /><AlertDescription className="text-foreground">{r.injectionWarning}</AlertDescription></Alert>}
-        {research.aiError && <Alert variant="info"><AlertTriangle /><AlertDescription className="text-foreground">{fmt(r.aiUnavailable, { reason: research.aiError })}</AlertDescription></Alert>}
+        {research.aiError && <Alert variant="info"><AlertTriangle /><AlertDescription className="text-foreground">{fmt(r.aiUnavailable, { reason: (r.aiReasons as Record<string, string>)[research.aiError] ?? research.aiError })}</AlertDescription></Alert>}
         {a?.status === "blocked" && <Alert variant="warning"><CircleSlash /><AlertDescription className="text-foreground">{fmt(r.blocked, { reason: a.error ?? "" })}</AlertDescription></Alert>}
 
         {a && !running && (

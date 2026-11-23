@@ -11,6 +11,7 @@ import { oauthConfigured } from "@/server/sending/providers/oauth";
 import { env, isProduction } from "@/server/env";
 import { inngestEnabled } from "@/server/jobs/client";
 import { AccountsManager } from "./accounts-manager";
+import { ProviderCheck } from "./provider-check";
 
 export const metadata = { title: "Integraties" };
 
@@ -66,6 +67,7 @@ export default async function IntegrationsPage({ searchParams }: PageProps<"/int
               </div>
               <Badge variant={inngestEnabled() ? "success" : "secondary"}>{inngestEnabled() ? "Live" : lang === "nl" ? "Ingebouwd" : "Built-in"}</Badge>
             </div>
+            {ws.isPlatformAdmin && <ProviderCheck />}
           </CardContent>
         </Card>
 

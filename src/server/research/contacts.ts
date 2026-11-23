@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/server/supabase/admin";
 import { consumeCredits } from "@/server/usage";
 import { getHunter } from "@/server/providers/registry-hunter";
+import { ProviderError } from "@/server/providers/types";
 import { classifyEmail } from "@/server/discovery/normalize";
 
 const VERIFICATION_MAP: Record<string, string> = { valid: "valid", invalid: "invalid", accept_all: "accept_all", webmail: "webmail", disposable: "disposable", unknown: "unknown" };
@@ -19,7 +20,14 @@ export async function findContactsWithHunter(orgId: string, userId: string | nul
   if (!b?.domain) return { error: "no_domain" as const };
 
   await consumeCredits({ orgId, kind: "enrichment", userId, referenceType: "hunter", referenceId: businessId, idempotencyKey: `hunter:${businessId}:${new Date().toISOString().slice(0, 10)}` });
-  const result = await hunter.client.domainSearch(b.domain, orgId, 10);
+  let result: Awaited<ReturnType<typeof hunter.client.domainSearch>>;
+  try {
+    result = await hunter.client.domainSearch(b.domain, orgId, 10);
+  } catch (err) {
+    if (err instanceof ProviderError && (err.status === 401 || err.status === 403)) return { error: "provider_auth" as const };
+    if (err instanceof ProviderError && err.status === 429) return { error: "provider_limit" as const };
+    throw err;
+  }
   if (!result) return { added: 0, total: 0 };
 
   let added = 0;

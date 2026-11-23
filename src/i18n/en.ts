@@ -58,6 +58,8 @@ export const en: Dictionary = {
       notFound: "Not found.",
       rate_limited: "Too many requests. Please try again in a minute.",
       credits: "You've used this month's allowance. Upgrade your plan or buy extra credits.",
+      provider_auth: "The connection to the data provider is not working (invalid API key). Contact your administrator.",
+      provider_limit: "The data provider's limit has been reached. Please try again later.",
     },
   },
   brand: {
@@ -288,6 +290,7 @@ export const en: Dictionary = {
     pagesAnalysed: "Pages analysed",
     injectionWarning: "The website contained text that tried to instruct the AI. It was ignored.",
     aiUnavailable: "AI unavailable ({reason}); only the deterministic analysis was performed.",
+    aiReasons: { quota: "OpenAI credit is exhausted", invalid_key: "OpenAI key is invalid", disabled: "AI is disabled", invalid_output: "unusable AI response", error: "temporary OpenAI error" },
     blocked: "Research not performed: {reason}",
     findContacts: "Find contacts (Hunter)",
     verifyEmail: "Verify email",
@@ -444,6 +447,11 @@ export const en: Dictionary = {
     title: "Integrations",
     subtitle: "Data sources, AI and the email accounts you send from.",
     providers: "Data sources & services",
+    check: {
+      button: "Test connections",
+      hint: "Visible to platform admins only. Tests the API keys configured in Vercel with a free or minimal call.",
+      status: { ok: "Working", invalid_key: "Invalid key", not_enabled: "API not enabled", no_credit: "No credit", not_configured: "No key set", mock: "Demo mode", error: "Error" },
+    },
     emailAccounts: "Email accounts",
     addSmtp: "SMTP/IMAP account",
     connectGmail: "Connect Google Workspace",

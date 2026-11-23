@@ -57,6 +57,8 @@ export const nl = {
       notFound: "Niet gevonden.",
       rate_limited: "Te veel verzoeken. Probeer het over een minuut opnieuw.",
       credits: "Je tegoed voor deze maand is op. Upgrade je abonnement of koop extra credits.",
+      provider_auth: "De koppeling met de dataleverancier werkt niet (ongeldige API-key). Neem contact op met de beheerder.",
+      provider_limit: "De limiet van de dataleverancier is bereikt. Probeer het later opnieuw.",
     },
   },
   brand: {
@@ -287,6 +289,7 @@ export const nl = {
     pagesAnalysed: "Geanalyseerde pagina's",
     injectionWarning: "De website bevatte tekst die probeerde de AI instructies te geven. Die tekst is genegeerd.",
     aiUnavailable: "AI niet beschikbaar ({reason}); alleen de deterministische analyse is uitgevoerd.",
+    aiReasons: { quota: "OpenAI-tegoed is op", invalid_key: "OpenAI-key is ongeldig", disabled: "AI is uitgeschakeld", invalid_output: "onbruikbaar AI-antwoord", error: "tijdelijke fout bij OpenAI" },
     blocked: "Onderzoek niet uitgevoerd: {reason}",
     findContacts: "Contacten zoeken (Hunter)",
     verifyEmail: "E-mail verifiëren",
@@ -443,6 +446,11 @@ export const nl = {
     title: "Integraties",
     subtitle: "Databronnen, AI en de e-mailaccounts waarmee je verstuurt.",
     providers: "Databronnen & diensten",
+    check: {
+      button: "Verbindingen testen",
+      hint: "Alleen zichtbaar voor platformbeheerders. Test de API-keys uit Vercel met een gratis of minimale aanroep.",
+      status: { ok: "Werkt", invalid_key: "Key ongeldig", not_enabled: "API niet ingeschakeld", no_credit: "Tegoed op", not_configured: "Geen key ingesteld", mock: "Demomodus", error: "Fout" },
+    },
     emailAccounts: "E-mailaccounts",
     addSmtp: "SMTP/IMAP-account",
     connectGmail: "Google Workspace koppelen",
