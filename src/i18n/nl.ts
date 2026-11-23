@@ -65,6 +65,23 @@ export const nl = {
     },
   },
   settingsNav: { sender: "Afzender & schrijfstijl", mailbox: "Mailbox", company: "Bedrijfsgegevens & privacy", billing: "Abonnement & verbruik", account: "Mijn account" },
+  overviewPage: {
+    welcome: "Welkom, {name}",
+    welcomePlain: "Welkom",
+    subtitle: "Alles in één oogopslag: je bedrijven, e-mails, verzendingen, reacties en verbruik.",
+    getStarted: "Klaar om te mailen",
+    stepsDone: "{done} van {total} stappen gedaan",
+    steps: { profile: "Afzenderprofiel invullen", company: "Bedrijfsgegevens & privacyverklaring", mailbox: "Mailbox koppelen", leads: "Bedrijven zoeken en toevoegen", emails: "E-mails maken", send: "Eerste e-mails verzenden" },
+    stats: {
+      businesses: "Bedrijven", withEmail: "{count} met e-mailadres",
+      emails: "E-mails gemaakt", ready: "{count} klaar om te verzenden",
+      sent: "Verzonden deze maand", sentTotal: "{count} in totaal · {queued} ingepland",
+      replies: "Reacties deze maand", repliesHint: "{positive} positief · {rate}% reactie · {unsub} afgemeld",
+    },
+    latestReplies: "Laatste reacties", toInbox: "Naar inbox", noReplies: "Nog geen reacties. Antwoorden op je e-mails verschijnen hier.",
+    usage: "Verbruik deze maand", cap: "Maandplafond {cap}", noUsagePlan: "Je verbruik zie je hier zodra je abonnement actief is.", toBilling: "Abonnement & verbruik",
+    latestSends: "Laatst verzonden", noSends: "Nog niets verzonden.",
+  },
   paywall: {
     title: "Bekijkmodus.",
     text: "Je kunt alles bekijken. Kies een abonnement om bedrijven te zoeken, adressen te vinden en e-mails te versturen.",

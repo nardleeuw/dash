@@ -66,6 +66,23 @@ export const en: Dictionary = {
     },
   },
   settingsNav: { sender: "Sender & writing style", mailbox: "Mailbox", company: "Company details & privacy", billing: "Plan & usage", account: "My account" },
+  overviewPage: {
+    welcome: "Welcome, {name}",
+    welcomePlain: "Welcome",
+    subtitle: "Everything at a glance: your businesses, emails, sends, replies and usage.",
+    getStarted: "Ready to email",
+    stepsDone: "{done} of {total} steps done",
+    steps: { profile: "Fill in your sender profile", company: "Company details & privacy notice", mailbox: "Connect a mailbox", leads: "Find and add businesses", emails: "Create emails", send: "Send your first emails" },
+    stats: {
+      businesses: "Businesses", withEmail: "{count} with an email address",
+      emails: "Emails created", ready: "{count} ready to send",
+      sent: "Sent this month", sentTotal: "{count} in total · {queued} scheduled",
+      replies: "Replies this month", repliesHint: "{positive} positive · {rate}% reply rate · {unsub} unsubscribed",
+    },
+    latestReplies: "Latest replies", toInbox: "Go to inbox", noReplies: "No replies yet. Answers to your emails appear here.",
+    usage: "Usage this month", cap: "Monthly cap {cap}", noUsagePlan: "Your usage appears here once your plan is active.", toBilling: "Plan & usage",
+    latestSends: "Recently sent", noSends: "Nothing sent yet.",
+  },
   paywall: {
     title: "Preview mode.",
     text: "You can look around. Choose a plan to search businesses, find addresses and send emails.",
