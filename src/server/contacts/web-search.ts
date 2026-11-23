@@ -106,7 +106,13 @@ export function verifyFindings(
   for (const f of findings.emails) {
     const email = normalizeEmail(f.email);
     const found = pageEmails.get(f.source_url);
-    if (!email || !found?.has(email)) {
+    // Many small-business sites block bots or render with JavaScript, so the cited page
+    // cannot always be read. An address on the business's own domain is then still
+    // accepted (the domain match is strong evidence; MX is checked later). Anything
+    // else must literally appear on a page we could read.
+    const pageUnreadable = !pages.get(f.source_url);
+    const ownDomain = Boolean(email && business.domain && (email.endsWith("@" + business.domain) || email.endsWith("." + business.domain)));
+    if (!email || (!found?.has(email) && !(pageUnreadable && ownDomain))) {
       rejected++;
       continue;
     }

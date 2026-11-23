@@ -78,6 +78,9 @@ export async function importAction(groups: unknown, listId: unknown): Promise<Ac
         const rows = outcomes.filter((o) => o.businessId).map((o) => ({ org_id: ws.org.id, list_id: list, business_id: o.businessId!, added_by: ws.user.id }));
         if (rows.length) await createAdminClient().from("lead_list_members").upsert(rows, { onConflict: "list_id,business_id", ignoreDuplicates: true });
       }
+      // Look up email addresses right away (background; free website scan first).
+      const imported = outcomes.filter((o) => o.businessId && o.status !== "failed").map((o) => o.businessId!);
+      if (imported.length) await dispatch("contacts/bulk.requested", { orgId: ws.org.id, userId: ws.user.id, businessIds: imported });
       revalidatePath("/leads");
       return ok({ outcomes });
     } catch (err) {

@@ -135,9 +135,12 @@ export async function generateEmailById(orgId: string, emailId: string) {
   const { data: oppRows } = await admin.from("opportunities").select("*").eq("business_id", b.id).eq("status", "open");
   const opportunity = chooseOpportunity((oppRows ?? []) as Opp[], agency);
 
+  // Research may have found addresses on the website: pick the recipient afterwards.
+  const { data: freshContacts } = await admin.from("contacts").select("id, email, full_name, first_name, job_title, email_type, email_verification, is_primary").eq("business_id", email.business_id);
+  const allContacts = ((freshContacts ?? contacts ?? []) as ContactCandidate[]);
   const contact = email.contact_id
-    ? ((contacts ?? []) as ContactCandidate[]).find((c) => c.id === email.contact_id) ?? null
-    : pickRecipient((contacts ?? []) as ContactCandidate[]);
+    ? allContacts.find((c) => c.id === email.contact_id) ?? null
+    : pickRecipient(allContacts);
   const generic = !contact || contact.email_type !== "personal";
   const recipientName = !generic ? contact?.full_name ?? null : null;
 

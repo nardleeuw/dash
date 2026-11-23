@@ -9,6 +9,7 @@ import { classifyEmail } from "@/server/discovery/normalize";
 import { crawlWebsite, fetchPublicPage } from "@/server/research/crawler";
 import { acceptableForBusiness, emailDomain, FREE_MAIL_DOMAINS, normalizeEmail } from "./emails";
 import { domainAcceptsMail } from "./mx";
+import { pickRecipient, type ContactCandidate } from "@/server/emails/recipient";
 import { sourceUrls, verifyFindings, webFindingsSchema, webSearchSystemPrompt, webSearchUserPrompt, type WebFindings } from "./web-search";
 
 /**
@@ -225,6 +226,14 @@ export async function findBusinessEmails(orgId: string, userId: string | null, b
     }
   }
 
+  // Emails written before an address was known get their recipient now.
+  if (found.size) {
+    const { data: all } = await admin.from("contacts").select("id, email, full_name, first_name, job_title, email_type, email_verification, is_primary").eq("business_id", businessId);
+    const best = pickRecipient((all ?? []) as ContactCandidate[]);
+    if (best?.email) {
+      await admin.from("generated_emails").update({ recipient_email: best.email, contact_id: best.id }).eq("org_id", orgId).eq("business_id", businessId).is("recipient_email", null).eq("generation_status", "completed");
+    }
+  }
   await admin.from("activities").insert({ org_id: orgId, business_id: businessId, actor_id: userId, type: "contacts_found", data: { added, bySource, notes: notes.slice(0, 10) } });
   return { added, total: found.size, bySource, notes };
 }

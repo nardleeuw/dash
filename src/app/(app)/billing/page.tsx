@@ -11,7 +11,7 @@ import { getDictionary } from "@/i18n/server";
 import { fmt, formatCurrency, formatDate, formatNumber } from "@/i18n/format";
 import { getCreditStatus } from "@/server/usage";
 import { stripeMode } from "@/server/billing/stripe";
-import { PlanButton, PackButton, PortalButton, PlanAdmin, SpendCapForm } from "./billing-client";
+import { PlanButton, PortalButton, PlanAdmin, SpendCapForm } from "./billing-client";
 import { USAGE_PLAN_KEY, billable } from "@/config/billing";
 import { monthlySpend, monthStart } from "@/server/usage";
 
@@ -42,10 +42,9 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
   const [ws, t] = await Promise.all([getWorkspace(), getDictionary()]);
   const sp = await searchParams;
   const supabase = await createClient();
-  const [{ data: sub }, { data: plans }, { data: packs }, credits, { data: seats }] = await Promise.all([
+  const [{ data: sub }, { data: plans }, credits, { data: seats }] = await Promise.all([
     supabase.from("subscriptions").select("*").eq("org_id", ws.org.id).single(),
     supabase.from("plans").select("*").order("sort_order"),
-    supabase.from("credit_packs").select("*").eq("is_active", true),
     getCreditStatus(ws.org.id),
     supabase.rpc("seat_status", { p_org: ws.org.id }),
   ]);
@@ -175,22 +174,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
         </section>
         )}
 
-        {!usagePlan && (
-        <section>
-          <h2 className="mb-3 text-base font-semibold">{b.packs}</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {(packs ?? []).map((p) => (
-              <Card key={p.key}>
-                <CardContent className="space-y-2">
-                  <p className="text-sm font-medium">{formatNumber(p.quantity, locale)} {(b.kinds as Record<string, string>)[p.kind]}</p>
-                  <p className="text-xl font-semibold">{formatCurrency(p.price_cents, locale)}</p>
-                  {hasMinRole(ws.role, "admin") && <PackButton packKey={p.key} label={b.buy} />}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-        )}
+
 
         {ws.isPlatformAdmin && <PlanAdmin plans={(plans ?? []) as never} stripeLive={mode === "live"} />}
       </div>

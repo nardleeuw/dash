@@ -22,9 +22,10 @@ export type Industry = {
   group: IndustryGroup;
 };
 
-export type IndustryGroup = "zorg" | "beauty" | "horeca" | "retail" | "bouw" | "auto" | "zakelijk" | "vrije_tijd" | "diensten";
+export type IndustryGroup = "agencies" | "zorg" | "beauty" | "horeca" | "retail" | "bouw" | "auto" | "zakelijk" | "vrije_tijd" | "diensten";
 
 export const INDUSTRY_GROUPS: Record<IndustryGroup, { nl: string; en: string }> = {
+  agencies: { nl: "Agencies & bureaus", en: "Agencies" },
   zorg: { nl: "Zorg & welzijn", en: "Health & care" },
   beauty: { nl: "Beauty & verzorging", en: "Beauty & personal care" },
   horeca: { nl: "Horeca", en: "Food & drink" },
@@ -45,6 +46,16 @@ function I(group: IndustryGroup, key: string, nl: string, en: string, query: [st
 }
 
 export const INDUSTRIES: Industry[] = [
+  // Agencies & bureaus
+  I("agencies", "webdesign", "Webdesignbureaus & websitebouwers", "Web design agencies", ["webdesign bureau", "web design agency"], { sbi: ["6201", "7410"], variants: [["websitebouwer", "webbureau", "wordpress bureau"], ["website developer"]], aliases: ["webdesign", "webbureau", "website", "wordpress", "webdevelopment", "internetbureau"], osm: ['["office"="it"]'] }),
+  I("agencies", "marketing_agency", "Marketing- & online marketingbureaus", "Marketing agencies", ["marketingbureau", "marketing agency"], { sbi: ["7311", "7021"], variants: [["online marketing bureau", "digital agency", "social media bureau"], ["digital marketing agency", "social media agency"]], aliases: ["marketing", "online marketing", "digital", "social media", "growth"], osm: ['["office"="advertising_agency"]'] }),
+  I("agencies", "seo_sea", "SEO- & SEA-bureaus", "SEO & SEA agencies", ["seo bureau", "seo agency"], { variants: [["google ads bureau", "zoekmachinemarketing"], ["google ads agency"]], aliases: ["seo", "sea", "google ads", "zoekmachine", "vindbaarheid"] }),
+  I("agencies", "ai_automation", "AI- & automatiseringsbureaus", "AI & automation agencies", ["ai bureau", "ai agency"], { variants: [["ai automatisering", "automatiseringsbureau", "chatbot bedrijf", "ai receptionist"], ["automation agency", "chatbot company"]], aliases: ["ai", "kunstmatige intelligentie", "automatisering", "chatbot", "no-code", "make", "zapier"] }),
+  I("agencies", "advertising_branding", "Reclame-, communicatie- & brandingbureaus", "Advertising & branding agencies", ["reclamebureau", "advertising agency"], { sbi: ["7311"], variants: [["communicatiebureau", "brandingbureau", "creatief bureau"], ["branding agency", "creative agency"]], aliases: ["reclame", "communicatie", "branding", "creatief", "campagne"], osm: ['["office"="advertising_agency"]'] }),
+  I("agencies", "graphic_design", "Grafisch ontwerpers & ontwerpbureaus", "Graphic designers", ["grafisch ontwerpbureau", "graphic design studio"], { sbi: ["7410"], variants: [["grafisch ontwerper", "ontwerpstudio"], ["graphic designer"]], aliases: ["grafisch", "ontwerp", "design", "logo", "huisstijl"] }),
+  I("agencies", "video_content", "Video-, content- & copywritingbureaus", "Video, content & copywriting", ["videoproductie", "video production company"], { variants: [["contentbureau", "copywriter", "animatiestudio"], ["content agency", "copywriter"]], aliases: ["video", "content", "copywriting", "animatie", "podcast"] }),
+  I("agencies", "app_development", "App- & softwarebureaus", "App & software agencies", ["app ontwikkelaar", "app development company"], { sbi: ["6201"], variants: [["softwarebureau", "maatwerk software"], ["software agency"]], aliases: ["app", "software", "saas", "maatwerk", "developers"], osm: ['["office"="it"]'] }),
+
   // Zorg & welzijn
   I("zorg", "dental", "Tandartspraktijken", "Dental clinics", ["tandarts", "dentist"], { sbi: ["8623"], type: "dentist", variants: [["tandartspraktijk", "mondzorg"], ["dental clinic"]], aliases: ["tandarts", "mondhygiënist", "orthodontist", "mondzorg"], osm: ['["amenity"="dentist"]', '["healthcare"="dentist"]'] }),
   I("zorg", "general_practice", "Huisartsen", "General practitioners", ["huisarts", "general practitioner"], { sbi: ["8621"], type: "doctor", variants: [["huisartsenpraktijk"], []], aliases: ["dokter", "arts"], osm: ['["amenity"="doctors"]'] }),

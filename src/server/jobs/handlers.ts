@@ -25,7 +25,11 @@ export const handlers: HandlerMap = {
     return outcomes;
   },
   "retention/purge": async () => purgeExpiredData(),
-  "emails/resume": async () => (await import("@/server/emails/batch")).resumeStaleGeneration(),
+  "emails/resume": async () => {
+    const resumed = await (await import("@/server/emails/batch")).resumeStaleGeneration(150_000);
+    const contacts = await (await import("@/server/contacts/backfill")).backfillContacts(90_000);
+    return { ...resumed, ...contacts };
+  },
   "billing/report-usage": async () => {
     const { stripeMode } = await import("@/server/billing/stripe");
     if (stripeMode() !== "live") return { skipped: "stripe_not_live" };
