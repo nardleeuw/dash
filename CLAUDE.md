@@ -67,8 +67,10 @@ unsolicited advertising. The compliance gate treats this as a hard block.
   GitHub `nardleeuw/dash`; pushes to `main` deploy to
   https://leadwerk-app.vercel.app. Hobby only allows daily Vercel crons, so
   `vercel.json` has none.
-- `APP_ENV=staging` until real OpenAI/Hunter/Google keys are set in Vercel;
-  switch to `production` then (disables all mock providers).
+- OpenAI, Hunter and Google Places keys are set in Vercel (production target),
+  so those providers run live. `APP_ENV` stays `staging` during the test phase
+  (demo mailbox and demo billing stay available, clearly labelled); switch to
+  `production` once Stripe is configured and the product is sold.
 
 ## Conventions
 
