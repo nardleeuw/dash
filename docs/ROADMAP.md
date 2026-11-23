@@ -206,7 +206,7 @@ Actions CI (lint, typecheck, unit, local Supabase + DB tests, build, e2e);
 `vercel.json` (fra1); Supabase pg_cron scheduler (steps aside when Inngest is on);
 `scripts/deploy-supabase.mjs` (Management API); deployment and security docs.
 
-**Tests:** 74 unit · 52 DB · 3 e2e — all passing; lint clean; `pnpm build` passes.
+**Tests:** 74 unit · 54 DB · 3 e2e — all passing; lint clean; `pnpm build` passes.
 
 **Deployed (staging):** Supabase project in Frankfurt with all migrations and
 pg_cron jobs (campaigns-tick 5 min, inbox-sync 10 min, retention-purge daily,
