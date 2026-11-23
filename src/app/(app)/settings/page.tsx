@@ -32,7 +32,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
     ) : null;
   } else if (tab === "organization" || tab === "compliance") {
     const [{ data: org }, { data: notices }, { data: permissions }, { data: suppression }, { data: requests }] = await Promise.all([
-      supabase.from("organizations").select("name, legal_name, kvk_number, postal_address, privacy_policy_url, locale").eq("id", ws.org.id).single(),
+      supabase.from("organizations").select("name, legal_name, kvk_number, privacy_policy_url, locale").eq("id", ws.org.id).single(),
       supabase.from("privacy_notices").select("language, email_footer, url, version").eq("org_id", ws.org.id).eq("is_active", true),
       supabase.from("email_permissions").select("id, email, basis, recipient_category, purpose, source, obtained_at, expires_at, revoked_at, evidence_file_path").eq("org_id", ws.org.id).order("created_at", { ascending: false }).limit(200),
       supabase.from("suppression_records").select("id, email, domain, reason, source, created_at").eq("org_id", ws.org.id).order("created_at", { ascending: false }).limit(300),

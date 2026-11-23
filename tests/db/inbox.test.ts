@@ -16,7 +16,7 @@ beforeAll(async () => {
   const user = await createTestUser("inbox");
   userId = user.id;
   orgId = await createOrgFor(user, `Inbox Org ${Date.now()}`);
-  await admin.from("organizations").update({ legal_name: "Studio Noord B.V.", postal_address: "Straat 1, 3511 AA Utrecht" }).eq("id", orgId);
+  await admin.from("organizations").update({ legal_name: "Studio Noord B.V." }).eq("id", orgId);
   const { data: p } = await admin.from("agency_profiles").select("id").eq("org_id", orgId).single();
   const { data: acc } = await admin.from("email_accounts").insert({ org_id: orgId, provider: "mock", email_address: `inbox-${Date.now()}@studionoord.nl`, is_mock: true, min_delay_seconds: 10 }).select("id").single();
   accountId = acc!.id;

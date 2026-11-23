@@ -19,13 +19,13 @@ export async function sendConversationReply(orgId: string, userId: string, conve
   const { data: last } = await admin.from("replies").select("message_id_header, references_headers, subject").eq("conversation_id", conversationId).order("received_at", { ascending: false }).limit(1).maybeSingle();
   const { data: account } = await admin.from("email_accounts").select("*").eq("id", conv.email_account_id).single<EmailAccountRow>();
   if (!account || account.status === "disconnected") return { error: "account_unavailable" as const };
-  const { data: org } = await admin.from("organizations").select("legal_name, kvk_number, postal_address, privacy_policy_url, locale").eq("id", orgId).single();
+  const { data: org } = await admin.from("organizations").select("legal_name, privacy_policy_url, locale").eq("id", orgId).single();
   if (!org || !senderIdentityComplete(org)) return { error: "sender_identity" as const };
 
   const msg = composeMessage({
     orgId, appUrl: env().APP_URL, from: { name: account.display_name, email: account.email_address }, to: conv.participant_email,
     subject: (last?.subject ?? conv.subject ?? "").replace(/^re:\s*/i, ""), body,
-    identity: { legalName: org.legal_name!, postalAddress: org.postal_address!, kvkNumber: null, privacyUrl: org.privacy_policy_url, footerText: null, language: org.locale === "en" ? "en" : "nl" },
+    identity: { legalName: org.legal_name!, privacyUrl: org.privacy_policy_url, footerText: null, language: org.locale === "en" ? "en" : "nl" },
     thread: last ? { inReplyTo: last.message_id_header, references: [...(last.references_headers ?? []), last.message_id_header].slice(-10) } : null,
   });
   const provider = await providerFor(admin, account);

@@ -3,8 +3,6 @@ import { createUnsubscribeToken } from "@/server/compliance/unsubscribe";
 
 export type SenderIdentity = {
   legalName: string;
-  postalAddress: string;
-  kvkNumber: string | null;
   privacyUrl: string | null;
   footerText: string | null;
   language: "nl" | "en";
@@ -46,7 +44,7 @@ export function composeMessage(input: {
   const footer = [
     "",
     "--",
-    [input.identity.legalName, input.identity.postalAddress, input.identity.kvkNumber ? `KVK ${input.identity.kvkNumber}` : null].filter(Boolean).join(" · "),
+    input.identity.legalName,
     input.identity.footerText ?? (nl
       ? "U ontvangt dit bericht omdat wij denken dat het relevant is voor uw bedrijf. Afmelden kan altijd via de link hieronder."
       : "You are receiving this message because we think it is relevant for your business. You can unsubscribe at any time via the link below."),

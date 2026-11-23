@@ -72,7 +72,7 @@ export const en: Dictionary = {
     subtitle: "Everything at a glance: your businesses, emails, sends, replies and usage.",
     getStarted: "Ready to email",
     stepsDone: "{done} of {total} steps done",
-    steps: { profile: "Fill in your sender profile", company: "Fill in company name & address", mailbox: "Connect a mailbox", leads: "Find and add businesses", emails: "Create emails", send: "Send your first emails" },
+    steps: { profile: "Fill in your sender profile", company: "Fill in your name or company name", mailbox: "Connect a mailbox", leads: "Find and add businesses", emails: "Create emails", send: "Send your first emails" },
     stats: {
       businesses: "Businesses", withEmail: "{count} with an email address",
       emails: "Emails created", ready: "{count} ready to send",
@@ -552,7 +552,7 @@ export const en: Dictionary = {
     stepInstructions: "Instruction for the AI",
     addStep: "Add step",
     stopRules: "Follow-ups stop automatically on a reply, unsubscribe, objection, bounce, suppression or cancellation.",
-    errors: { no_account: "Choose a sending account.", account_inactive: "The sending account is not active.", sender_identity: "Enter your company name and full address (with postcode and city) in Settings → Organisation.", invalid_status: "This action is not possible in the current status.", no_sequence: "Choose a follow-up sequence first." },
+    errors: { no_account: "Choose a sending account.", account_inactive: "The sending account is not active.", sender_identity: "Enter your name or company name in Settings → Organisation.", invalid_status: "This action is not possible in the current status.", no_sequence: "Choose a follow-up sequence first." },
     noRotation: "Accounts or domains are never rotated automatically to evade limits.",
   },
   integrations: {
@@ -597,14 +597,11 @@ export const en: Dictionary = {
     title: "Settings",
     tabs: { organization: "Organisation", team: "Team", compliance: "Compliance", audit: "Audit log", profile: "Profile" },
     orgName: "Workspace name",
-    legalName: "Legal name (sender)",
+    legalName: "Name or company name (sender)",
     kvkNumber: "KVK number (optional)",
-    postalAddress: "Postal address",
-    postalAddressPlaceholder: "Street 1, 1234 AB City",
-    postalAddressIncomplete: "Enter the full address: street and number, postcode and city (e.g. Kamille 2a, 5248 AB Rosmalen).",
     privacyUrl: "Privacy policy URL",
     language: "Workspace language",
-    identityHint: "These details are required at the bottom of every email.",
+    identityHint: "Your name or company name appears at the bottom of every email, with an unsubscribe link. No address is shown or stored.",
     team: { invite: "Invite", email: "Email address", role: "Role", pending: "Pending invitations", members: "Members", link: "Invitation link (shown once)", leave: "Leave", removeMember: "Remove", copied: "Link copied" },
     compliance: {
       rules: "Sending rules",
@@ -670,7 +667,7 @@ export const en: Dictionary = {
     campaign: "Campaign",
     simulate: "Simulate reply (demo)",
     simulatePlaceholder: "E.g. Sounds interesting, can you call on Tuesday?",
-    errors: { suppressed: "This address is suppressed; replying is blocked.", sender_identity: "Enter your company name and full address (with postcode and city) in Settings → Organisation first.", no_thread: "Conversation not found.", account_unavailable: "The sending account is unavailable." },
+    errors: { suppressed: "This address is suppressed; replying is blocked.", sender_identity: "Enter your name or company name in Settings → Organisation first.", no_thread: "Conversation not found.", account_unavailable: "The sending account is unavailable." },
   },
   crm: {
     title: "CRM",

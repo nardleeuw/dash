@@ -27,11 +27,11 @@ async function release(admin: SupabaseClient, recipientId: string, patch: Record
 
 async function senderIdentity(admin: SupabaseClient, orgId: string, language: "nl" | "en"): Promise<SenderIdentity | null> {
   const [{ data: org }, { data: notice }] = await Promise.all([
-    admin.from("organizations").select("legal_name, kvk_number, postal_address, privacy_policy_url").eq("id", orgId).single(),
+    admin.from("organizations").select("legal_name, privacy_policy_url").eq("id", orgId).single(),
     admin.from("privacy_notices").select("email_footer, url").eq("org_id", orgId).eq("is_active", true).eq("language", language).order("version", { ascending: false }).limit(1).maybeSingle(),
   ]);
   if (!org || !senderIdentityComplete(org)) return null;
-  return { legalName: org.legal_name!, postalAddress: org.postal_address!, kvkNumber: null, privacyUrl: notice?.url ?? org.privacy_policy_url, footerText: notice?.email_footer ?? null, language };
+  return { legalName: org.legal_name!, privacyUrl: notice?.url ?? org.privacy_policy_url, footerText: notice?.email_footer ?? null, language };
 }
 
 /** Messages stuck in "sending" have an unknown outcome: never resend automatically. */

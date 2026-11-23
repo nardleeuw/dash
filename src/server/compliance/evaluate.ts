@@ -8,11 +8,11 @@ export type SenderContext = { senderIdentityComplete: boolean; privacyNoticeConf
 
 export async function loadSenderContext(admin: SupabaseClient, orgId: string): Promise<SenderContext> {
   const [{ data: org }, { count: notices }] = await Promise.all([
-    admin.from("organizations").select("legal_name, kvk_number, postal_address, privacy_policy_url, settings").eq("id", orgId).single(),
+    admin.from("organizations").select("legal_name, privacy_policy_url, settings").eq("id", orgId).single(),
     admin.from("privacy_notices").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_active", true),
   ]);
   return {
-    // Legal name + full address (postcode and place); KVK is not required.
+    // Only the sender name is required (no address, no KVK).
     senderIdentityComplete: senderIdentityComplete(org),
     privacyNoticeConfigured: Boolean((notices ?? 0) > 0 || org?.privacy_policy_url),
     settings: readComplianceSettings(org?.settings as Record<string, unknown>),

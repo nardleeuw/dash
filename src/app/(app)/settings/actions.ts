@@ -11,7 +11,6 @@ import { env } from "@/server/env";
 import { reevaluateOrganization, evaluateEmailCompliance } from "@/server/compliance/evaluate";
 import { suppressAddress } from "@/server/compliance/unsubscribe-handler";
 import { exportSubjectData, deleteSubjectData } from "@/server/compliance/subject-requests";
-import { postalAddressComplete } from "@/server/compliance/identity";
 
 const uuid = z.string().uuid();
 const opt = (max: number) => z.string().trim().max(max).optional().nullable().transform((v) => v || null);
@@ -23,7 +22,6 @@ export async function updateOrganizationAction(input: unknown): Promise<ActionRe
       name: z.string().trim().min(1).max(120),
       legal_name: opt(200),
       kvk_number: z.string().trim().regex(/^\d{8}$/).optional().nullable().or(z.literal("")).transform((v) => v || null),
-      postal_address: opt(300).refine((v) => !v || postalAddressComplete(v), { message: "address_incomplete" }),
       privacy_policy_url: z.string().trim().url().max(300).optional().nullable().or(z.literal("")).transform((v) => v || null),
       locale: z.enum(["nl", "en"]),
     }).parse(input);

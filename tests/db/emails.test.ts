@@ -83,7 +83,7 @@ describe("individual email generation", () => {
   it("becomes eligible once sender identity, privacy notice and a legal basis are documented", async () => {
     const { evaluateEmailCompliance } = await import("@/server/compliance/evaluate");
     const { data: e } = await admin.from("generated_emails").select("id, recipient_email, business_id").eq("business_id", businessIds[1]).single();
-    await admin.from("organizations").update({ legal_name: "Studio Noord B.V.", kvk_number: "87654321", postal_address: "Straat 1, 3511 AA Utrecht", privacy_policy_url: "https://studionoord.nl/privacy" }).eq("id", orgId);
+    await admin.from("organizations").update({ legal_name: "Studio Noord B.V.", kvk_number: "87654321", privacy_policy_url: "https://studionoord.nl/privacy" }).eq("id", orgId);
     let res = await evaluateEmailCompliance(orgId, e!.id);
     expect(res!.reasons.map((r) => r.code)).toEqual(expect.arrayContaining(["no_legal_basis"]));
     await admin.from("email_permissions").insert({

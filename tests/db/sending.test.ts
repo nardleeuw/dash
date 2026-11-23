@@ -27,7 +27,7 @@ async function approvedEmailFor(name: string, email: string, withPermission = tr
 beforeAll(async () => {
   const user = await createTestUser("sender");
   orgId = await createOrgFor(user, `Send Org ${Date.now()}`);
-  await admin.from("organizations").update({ legal_name: "Studio Noord", postal_address: "Straat 1, 3511 AA Utrecht" }).eq("id", orgId);
+  await admin.from("organizations").update({ legal_name: "Studio Noord" }).eq("id", orgId);
   const { data: p } = await admin.from("agency_profiles").select("id").eq("org_id", orgId).single();
   profileId = p!.id;
   const { data: acc } = await admin.from("email_accounts").insert({ org_id: orgId, provider: "mock", email_address: `out-${Date.now()}@studionoord.nl`, display_name: "Nard", is_mock: true, min_delay_seconds: 10, hourly_limit: 100, daily_limit: 100 }).select("id").single();
@@ -74,7 +74,8 @@ describe("campaign sending", () => {
     expect(out.sent).toBe(1);
     const msg = MockMailProvider.sent.at(-1)!;
     expect(msg.to).toBe("jan@bakkerij-een.nl");
-    expect(msg.text).toContain("Straat 1, 3511 AA Utrecht");
+    expect(msg.text).toContain("Studio Noord");
+    expect(msg.text).not.toMatch(/Straat|\d{4} ?[A-Z]{2}/);
     expect(msg.headers["List-Unsubscribe"]).toContain("https://app.example/api/unsubscribe/");
     const { data: r } = await admin.from("campaign_recipients").select("current_step, status, next_send_at").eq("id", recipientId).single();
     expect(r).toMatchObject({ current_step: 1, status: "active" });

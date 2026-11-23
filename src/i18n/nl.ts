@@ -71,7 +71,7 @@ export const nl = {
     subtitle: "Alles in één oogopslag: je bedrijven, e-mails, verzendingen, reacties en verbruik.",
     getStarted: "Klaar om te mailen",
     stepsDone: "{done} van {total} stappen gedaan",
-    steps: { profile: "Afzenderprofiel invullen", company: "Bedrijfsnaam & adres invullen", mailbox: "Mailbox koppelen", leads: "Bedrijven zoeken en toevoegen", emails: "E-mails maken", send: "Eerste e-mails verzenden" },
+    steps: { profile: "Afzenderprofiel invullen", company: "Naam of bedrijfsnaam invullen", mailbox: "Mailbox koppelen", leads: "Bedrijven zoeken en toevoegen", emails: "E-mails maken", send: "Eerste e-mails verzenden" },
     stats: {
       businesses: "Bedrijven", withEmail: "{count} met e-mailadres",
       emails: "E-mails gemaakt", ready: "{count} klaar om te verzenden",
@@ -551,7 +551,7 @@ export const nl = {
     stepInstructions: "Instructie voor de AI",
     addStep: "Stap toevoegen",
     stopRules: "Follow-ups stoppen automatisch bij een reactie, afmelding, bezwaar, bounce, suppressie of annulering.",
-    errors: { no_account: "Kies een verzendaccount.", account_inactive: "Het verzendaccount is niet actief.", sender_identity: "Vul je bedrijfsnaam en volledige adres (met postcode en plaats) in bij Instellingen → Organisatie.", invalid_status: "Deze actie kan niet in de huidige status.", no_sequence: "Kies eerst een follow-upreeks." },
+    errors: { no_account: "Kies een verzendaccount.", account_inactive: "Het verzendaccount is niet actief.", sender_identity: "Vul je naam of bedrijfsnaam in bij Instellingen → Organisatie.", invalid_status: "Deze actie kan niet in de huidige status.", no_sequence: "Kies eerst een follow-upreeks." },
     noRotation: "Er wordt nooit automatisch gewisseld tussen accounts of domeinen om limieten te omzeilen.",
   },
   integrations: {
@@ -596,14 +596,11 @@ export const nl = {
     title: "Instellingen",
     tabs: { organization: "Organisatie", team: "Team", compliance: "Compliance", audit: "Auditlog", profile: "Profiel" },
     orgName: "Naam werkruimte",
-    legalName: "Statutaire naam (afzender)",
+    legalName: "Naam of bedrijfsnaam (afzender)",
     kvkNumber: "KVK-nummer (optioneel)",
-    postalAddress: "Postadres",
-    postalAddressPlaceholder: "Straat 1, 1234 AB Plaats",
-    postalAddressIncomplete: "Vul het volledige adres in: straat en huisnummer, postcode en plaats (bijv. Kamille 2a, 5248 AB Rosmalen).",
     privacyUrl: "URL privacyverklaring",
     language: "Taal werkruimte",
-    identityHint: "Deze gegevens staan verplicht onderaan elke e-mail.",
+    identityHint: "Je naam of bedrijfsnaam staat onderaan elke e-mail, samen met een afmeldlink. Er wordt geen adres getoond of opgeslagen.",
     team: { invite: "Uitnodigen", email: "E-mailadres", role: "Rol", pending: "Openstaande uitnodigingen", members: "Leden", link: "Uitnodigingslink (eenmalig zichtbaar)", leave: "Verlaten", removeMember: "Verwijderen", copied: "Link gekopieerd" },
     compliance: {
       rules: "Verzendregels",
@@ -669,7 +666,7 @@ export const nl = {
     campaign: "Campagne",
     simulate: "Reactie simuleren (demo)",
     simulatePlaceholder: "Bijv. Klinkt interessant, kunt u dinsdag bellen?",
-    errors: { suppressed: "Dit adres is uitgesloten; antwoorden is geblokkeerd.", sender_identity: "Vul eerst je bedrijfsnaam en volledige adres (met postcode en plaats) in bij Instellingen → Organisatie.", no_thread: "Geen gesprek gevonden.", account_unavailable: "Het verzendaccount is niet beschikbaar." },
+    errors: { suppressed: "Dit adres is uitgesloten; antwoorden is geblokkeerd.", sender_identity: "Vul eerst je naam of bedrijfsnaam in bij Instellingen → Organisatie.", no_thread: "Geen gesprek gevonden.", account_unavailable: "Het verzendaccount is niet beschikbaar." },
   },
   crm: {
     title: "CRM",

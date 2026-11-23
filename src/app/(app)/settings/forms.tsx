@@ -1,5 +1,4 @@
 "use client";
-import { postalAddressComplete } from "@/server/compliance/identity";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -35,11 +34,11 @@ function useDone() {
   };
 }
 
-export function OrganizationForm({ initial, canEdit }: { initial: { name: string; legal_name: string | null; kvk_number: string | null; postal_address: string | null; privacy_policy_url: string | null; locale: string }; canEdit: boolean }) {
+export function OrganizationForm({ initial, canEdit }: { initial: { name: string; legal_name: string | null; kvk_number: string | null; privacy_policy_url: string | null; locale: string }; canEdit: boolean }) {
   const t = useT();
   const s = t.settings;
   const done = useDone();
-  const [f, setF] = useState({ ...initial, legal_name: initial.legal_name ?? "", kvk_number: initial.kvk_number ?? "", postal_address: initial.postal_address ?? "", privacy_policy_url: initial.privacy_policy_url ?? "" });
+  const [f, setF] = useState({ ...initial, legal_name: initial.legal_name ?? "", kvk_number: initial.kvk_number ?? "", privacy_policy_url: initial.privacy_policy_url ?? "" });
   const [pending, start] = useTransition();
   const field = (k: keyof typeof f, label: string) => (
     <div className="space-y-1.5"><Label htmlFor={k}>{label}</Label><Input id={k} value={f[k] as string} onChange={(e) => setF({ ...f, [k]: e.target.value })} disabled={!canEdit} /></div>
@@ -51,18 +50,13 @@ export function OrganizationForm({ initial, canEdit }: { initial: { name: string
         {field("name", s.orgName)}
         {field("legal_name", s.legalName)}
         <div className="space-y-1.5">
-          <Label htmlFor="postal_address">{s.postalAddress}</Label>
-          <Input id="postal_address" value={f.postal_address} placeholder={s.postalAddressPlaceholder} onChange={(e) => setF({ ...f, postal_address: e.target.value })} disabled={!canEdit} />
-          {f.postal_address.trim() && !postalAddressComplete(f.postal_address) && <p className="text-xs text-destructive">{s.postalAddressIncomplete}</p>}
-        </div>
-        <div className="space-y-1.5">
           <Label>{s.language}</Label>
           <Select value={f.locale} onValueChange={(v) => setF({ ...f, locale: v })} disabled={!canEdit}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="nl">Nederlands</SelectItem><SelectItem value="en">English</SelectItem></SelectContent>
           </Select>
         </div>
-        {canEdit && <div className="md:col-span-2"><Button disabled={pending || (Boolean(f.postal_address.trim()) && !postalAddressComplete(f.postal_address))} onClick={() => start(async () => done(await updateOrganizationAction(f)))}>{pending ? <Loader2 className="animate-spin" /> : <Save />}{t.common.save}</Button></div>}
+        {canEdit && <div className="md:col-span-2"><Button disabled={pending} onClick={() => start(async () => done(await updateOrganizationAction(f)))}>{pending ? <Loader2 className="animate-spin" /> : <Save />}{t.common.save}</Button></div>}
       </CardContent>
     </Card>
   );

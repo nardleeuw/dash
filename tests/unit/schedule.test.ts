@@ -42,11 +42,12 @@ describe("sending windows (Europe/Amsterdam)", () => {
 });
 
 describe("message composition", () => {
-  const identity = { legalName: "Studio Noord B.V.", postalAddress: "Straat 1, 3511 AA Utrecht", kvkNumber: "87654321", privacyUrl: "https://studionoord.nl/privacy", footerText: null, language: "nl" as const };
+  const identity = { legalName: "Studio Noord B.V.", privacyUrl: "https://studionoord.nl/privacy", footerText: null, language: "nl" as const };
   const msg = composeMessage({ orgId: "org-1", appUrl: "https://app.example", from: { name: "Nard", email: "nard@studionoord.nl" }, to: "Info@Bakkerij.nl", subject: "Online bestellen", body: "Beste team,\n\nTekst.", identity });
 
   it("adds sender identity, privacy notice and one-click unsubscribe", () => {
-    expect(msg.text).toContain("Studio Noord B.V. · Straat 1, 3511 AA Utrecht · KVK 87654321");
+    expect(msg.text).toContain("--\nStudio Noord B.V.\n");
+    expect(msg.text).not.toMatch(/KVK|Straat/);
     expect(msg.text).toContain("Privacyverklaring: https://studionoord.nl/privacy");
     expect(msg.text).toContain(msg.unsubscribeUrl);
     expect(msg.headers["List-Unsubscribe"]).toMatch(/^<https:\/\/app\.example\/api\/unsubscribe\/.+>$/);
