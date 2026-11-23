@@ -29,6 +29,9 @@ export async function createBatchAction(input: unknown): Promise<ActionResult<{ 
       instructions: z.string().trim().max(800).optional(),
       research: z.boolean().optional(),
       findEmails: z.boolean().optional(),
+      personalization: z.enum(["none", "subtle", "balanced", "strong"]).optional(),
+      formality: z.enum(["formal", "informal"]).optional(),
+      email_length: z.enum(["short", "medium", "long"]).optional(),
     }).parse(input);
     const supabase = await createClient();
     const { data: profile } = await supabase.from("agency_profiles").select("id, client_id, language, services").eq("id", p.agencyProfileId).eq("org_id", ws.org.id).maybeSingle();
@@ -48,7 +51,13 @@ export async function createBatchAction(input: unknown): Promise<ActionResult<{ 
       orgId: ws.org.id, userId: ws.user.id, businessIds: (owned ?? []).map((o) => o.id), agencyProfileId: profile.id, clientId: profile.client_id,
       source: p.scope, sourceRef: p.scope === "filter" ? { filter: p.filter } : p.scope === "list" ? { listId: p.listId } : {},
       mode: p.mode, language: profile.language as "nl" | "en", instructions: p.instructions || null,
-      options: { research: p.research !== false, findEmails: p.findEmails !== false },
+      options: {
+        // "Geen" personalisation = no website research; the email stays general.
+        research: p.personalization ? p.personalization !== "none" : p.research !== false,
+        findEmails: p.findEmails !== false,
+        personalization: p.personalization && p.personalization !== "none" ? p.personalization : p.personalization === "none" ? "subtle" : undefined,
+        formality: p.formality, email_length: p.email_length,
+      },
     });
     revalidatePath("/emails");
     return ok(res);
@@ -265,10 +274,15 @@ export async function sendApprovedAction(input: unknown): Promise<ActionResult<{
 
     let ids = p.emailIds ?? [];
     if (p.allApproved || !ids.length) {
-      const { data } = await supabase.from("generated_emails").select("id").eq("org_id", ws.org.id).eq("sequence_step", 0).eq("review_status", "approved").eq("generation_status", "completed").not("recipient_email", "is", null).limit(2000);
-      ids = (data ?? []).map((r) => r.id);
+      // "Alles verzenden": every finished email with a recipient that was not rejected or sent before.
+      const { data } = await supabase.from("generated_emails").select("id").eq("org_id", ws.org.id).eq("sequence_step", 0).neq("review_status", "rejected").eq("generation_status", "completed").not("recipient_email", "is", null).limit(2000);
+      const { data: inRuns } = await supabase.from("campaign_recipients").select("generated_email_id").eq("org_id", ws.org.id).in("generated_email_id", (data ?? []).map((r) => r.id));
+      const taken = new Set((inRuns ?? []).map((r) => r.generated_email_id));
+      ids = (data ?? []).map((r) => r.id).filter((id) => !taken.has(id));
     }
     if (!ids.length) return fail("nothing_to_send");
+    // Clicking "Verzenden" is the approval.
+    await supabase.from("generated_emails").update({ review_status: "approved", approved_by: ws.user.id, approved_at: new Date().toISOString() }).eq("org_id", ws.org.id).in("id", ids).eq("generation_status", "completed").neq("review_status", "approved");
 
     const { sendRunName } = await import("@/server/sending/runs");
     const admin = createAdminClient();

@@ -16,6 +16,8 @@ const KEY_OF: Partial<Record<ProviderKey, keyof Env>> = {
 
 /** Pure resolver (exported for tests). */
 export function resolveProviderMode(key: ProviderKey, e: Pick<Env, "APP_ENV" | "MOCK_PROVIDERS"> & Partial<Env>): ProviderMode {
+  // KVK can be switched off entirely (e.g. until a production key is available).
+  if (key === "kvk" && process.env.KVK_ENABLED === "0") return "disabled";
   const production = e.APP_ENV === "production";
   const forced = e.MOCK_PROVIDERS.split(",").map((s) => s.trim()).filter(Boolean);
   const envKey = KEY_OF[key];

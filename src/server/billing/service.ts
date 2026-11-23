@@ -30,6 +30,9 @@ export async function createSubscriptionCheckout(orgId: string, email: string, p
     line_items: usage
       ? [{ price: plan.stripe_price_id }, { price_data: { currency: "eur", unit_amount: full?.price_cents ?? billingConfig().setupFeeCents, product_data: { name: "Leadwerk starttarief (eenmalig)" } }, quantity: 1 }]
       : [{ price: plan.stripe_price_id, quantity: 1 }],
+    // Usage plan: pay the start fee by card and keep the card on file, so the
+    // monthly usage invoices are charged automatically.
+    ...(usage ? { payment_method_types: ["card" as const], payment_method_collection: "always" as const } : {}),
     success_url: `${env().APP_URL}/billing?checkout=success`,
     cancel_url: `${env().APP_URL}/billing?checkout=cancelled`,
     client_reference_id: orgId,

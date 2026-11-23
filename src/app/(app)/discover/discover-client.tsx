@@ -255,7 +255,7 @@ export function DiscoverClient(props: {
             <div className="space-y-2">
               <Label>{d.sources}</Label>
               <div className="space-y-1.5">
-                {PROVIDERS.map((p) => {
+                {PROVIDERS.filter((p) => props.providers[p] !== "disabled").map((p) => {
                   const status = props.providers[p];
                   return (
                     <label key={p} className={cn("flex items-center gap-2.5 rounded-md border px-2.5 py-2 text-sm", status === "disabled" && "opacity-50")}>
@@ -417,7 +417,6 @@ export function DiscoverClient(props: {
                               {r.isMock && <Badge variant="mock">{t.mock.label}</Badge>}
                             </div>
                             <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                              {r.kvkNumber && <span className="tabular">KVK {r.kvkNumber}</span>}
                               {r.industry && <span>{props.industries.find((i) => i.key === r.industry)?.label}</span>}
                               {inDb && dbId && <Link href={`/leads/${dbId}`} className="font-medium text-primary hover:underline">{d.alreadyInDb} →</Link>}
                             </div>

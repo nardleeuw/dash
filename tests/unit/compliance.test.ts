@@ -56,7 +56,10 @@ describe("hard eligibility gate", () => {
 
   it("adds send-time checks: approval, fact-check and mock content", () => {
     expect(codes({ ...ok, sendTime: { reviewApproved: false, factCheckPassed: true, accountIsMock: false } })).toContain("not_approved");
-    expect(codes({ ...ok, sendTime: { reviewApproved: true, factCheckPassed: false, accountIsMock: false } })).toContain("fact_check");
+    // Fact-check issues are shown as a warning, they do not block sending.
+    const fc = checkEligibility({ ...ok, sendTime: { reviewApproved: true, factCheckPassed: false, accountIsMock: false } });
+    expect(fc.eligible).toBe(true);
+    expect(fc.reasons.find((r) => r.code === "fact_check")?.severity).toBe("warn");
     expect(codes({ ...ok, isMockContent: true, sendTime: { reviewApproved: true, factCheckPassed: true, accountIsMock: false } })).toContain("mock_content");
     expect(checkEligibility({ ...ok, isMockContent: true, sendTime: { reviewApproved: true, factCheckPassed: true, accountIsMock: true } }).eligible).toBe(true);
   });

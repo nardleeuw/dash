@@ -112,11 +112,18 @@ export async function generateEmailById(orgId: string, emailId: string) {
     }
   }
 
-  const [{ data: b }, agency, { data: contacts }] = await Promise.all([
+  const [{ data: b }, profileRow, { data: contacts }] = await Promise.all([
     admin.from("businesses").select("*").eq("id", email.business_id).single(),
     loadAgencyProfile(admin, orgId, email.agency_profile_id),
     admin.from("contacts").select("id, email, full_name, first_name, job_title, email_type, email_verification, is_primary").eq("business_id", email.business_id),
   ]);
+  // Per-batch writing choices override the sender profile.
+  const agency = profileRow ? {
+    ...profileRow,
+    personalization: options.personalization ?? profileRow.personalization,
+    formality: options.formality ?? profileRow.formality,
+    email_length: options.email_length ?? profileRow.email_length,
+  } : null;
   if (!b || !agency) {
     await setStatus("failed", { error: "missing_business_or_profile" });
     return { status: "failed" };

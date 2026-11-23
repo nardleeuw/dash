@@ -24,7 +24,7 @@ export async function ProfileEmailsTab({ businessId, canWrite = true }: { busine
     .order("updated_at", { ascending: false });
   return (
     <TabsContent value="emails" className="space-y-4">
-      {canWrite && <div className="flex justify-end"><GenerateDialog scope="selection" ids={[businessId]} trigger="button" /></div>}
+      {canWrite && <div className="flex justify-end"><GenerateDialog ids={[businessId]} /></div>}
       {(emails ?? []).length === 0 && <p className="text-sm text-muted-foreground">{t.emails.empty}</p>}
       {(emails ?? []).map((e) => (
         <Card key={e.id}>

@@ -1,25 +1,57 @@
-import Link from "next/link";
 import { PageHeader } from "@/components/app/page-header";
 import { getWorkspace, hasMinRole } from "@/server/auth";
 import { createClient } from "@/server/supabase/server";
 import { getDictionary } from "@/i18n/server";
 import { readComplianceSettings } from "@/server/compliance/eligibility";
 import { OrganizationForm, TeamPanel, CompliancePanel, ProfileForm } from "./forms";
+import { ProfileForm as AgencyProfileForm } from "@/app/(app)/emails/profile-form";
+import { SettingsNav } from "@/components/app/settings-nav";
+import { industryOptions } from "@/config/industries";
 
 export const metadata = { title: "Instellingen" };
-const TABS = ["organization", "team", "compliance", "audit", "profile"] as const;
+// Team and audit stay reachable by URL but are not part of the simple settings menu.
+const TABS = ["sender", "organization", "team", "compliance", "audit", "profile"] as const;
 
 export default async function SettingsPage({ searchParams }: PageProps<"/settings">) {
   const [ws, t] = await Promise.all([getWorkspace(), getDictionary()]);
   const sp = await searchParams;
-  const tab = (TABS as readonly string[]).includes(String(sp.tab)) ? String(sp.tab) : "organization";
+  const tab = (TABS as readonly string[]).includes(String(sp.tab)) ? String(sp.tab) : "sender";
   const supabase = await createClient();
   const s = t.settings;
 
   let body: React.ReactNode;
-  if (tab === "organization") {
-    const { data: org } = await supabase.from("organizations").select("name, legal_name, kvk_number, postal_address, privacy_policy_url, locale").eq("id", ws.org.id).single();
-    body = <OrganizationForm initial={org!} canEdit={hasMinRole(ws.role, "admin")} />;
+  if (tab === "sender") {
+    const { data: profile } = await supabase.from("agency_profiles").select("*").eq("org_id", ws.org.id).is("client_id", null).maybeSingle();
+    body = profile ? (
+      <AgencyProfileForm
+        key={profile.id}
+        profile={profile as never}
+        industries={industryOptions(t.meta.locale === "en" ? "en" : "nl").map((i) => ({ key: i.key, label: i.label }))}
+        canEdit={hasMinRole(ws.role, "manager")}
+      />
+    ) : null;
+  } else if (tab === "organization" || tab === "compliance") {
+    const [{ data: org }, { data: notices }, { data: permissions }, { data: suppression }, { data: requests }] = await Promise.all([
+      supabase.from("organizations").select("name, legal_name, kvk_number, postal_address, privacy_policy_url, locale").eq("id", ws.org.id).single(),
+      supabase.from("privacy_notices").select("language, email_footer, url, version").eq("org_id", ws.org.id).eq("is_active", true),
+      supabase.from("email_permissions").select("id, email, basis, recipient_category, purpose, source, obtained_at, expires_at, revoked_at, evidence_file_path").eq("org_id", ws.org.id).order("created_at", { ascending: false }).limit(200),
+      supabase.from("suppression_records").select("id, email, domain, reason, source, created_at").eq("org_id", ws.org.id).order("created_at", { ascending: false }).limit(300),
+      supabase.from("data_subject_requests").select("id, email, type, status, received_at, due_at").eq("org_id", ws.org.id).order("received_at", { ascending: false }).limit(100),
+    ]);
+    const rules = readComplianceSettings(ws.org.settings);
+    body = (
+      <div className="space-y-6">
+        <OrganizationForm initial={org!} canEdit={hasMinRole(ws.role, "admin")} />
+        <CompliancePanel
+          rules={{ accepted_bases: rules.acceptedBases, require_verified_email: rules.requireVerifiedEmail }}
+          notices={(notices ?? []) as { language: "nl" | "en"; email_footer: string; url: string | null }[]}
+          permissions={permissions ?? []}
+          suppression={suppression ?? []}
+          requests={requests ?? []}
+          role={ws.role}
+        />
+      </div>
+    );
   } else if (tab === "team") {
     const [{ data: members }, { data: invitations }] = await Promise.all([
       supabase.from("organization_members").select("id, role, user_id, users!organization_members_user_id_fkey(full_name, email)").eq("org_id", ws.org.id).order("created_at"),
@@ -31,24 +63,6 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         invitations={(invitations ?? []) as { id: string; email: string; role: string; expires_at: string }[]}
         currentUserId={ws.user.id}
         canManage={hasMinRole(ws.role, "admin")}
-      />
-    );
-  } else if (tab === "compliance") {
-    const [{ data: notices }, { data: permissions }, { data: suppression }, { data: requests }] = await Promise.all([
-      supabase.from("privacy_notices").select("language, email_footer, url, version").eq("org_id", ws.org.id).eq("is_active", true),
-      supabase.from("email_permissions").select("id, email, basis, recipient_category, purpose, source, obtained_at, expires_at, revoked_at, evidence_file_path").eq("org_id", ws.org.id).order("created_at", { ascending: false }).limit(200),
-      supabase.from("suppression_records").select("id, email, domain, reason, source, created_at").eq("org_id", ws.org.id).order("created_at", { ascending: false }).limit(300),
-      supabase.from("data_subject_requests").select("id, email, type, status, received_at, due_at").eq("org_id", ws.org.id).order("received_at", { ascending: false }).limit(100),
-    ]);
-    const rules = readComplianceSettings(ws.org.settings);
-    body = (
-      <CompliancePanel
-        rules={{ accepted_bases: rules.acceptedBases, require_verified_email: rules.requireVerifiedEmail }}
-        notices={(notices ?? []) as { language: "nl" | "en"; email_footer: string; url: string | null }[]}
-        permissions={permissions ?? []}
-        suppression={suppression ?? []}
-        requests={requests ?? []}
-        role={ws.role}
       />
     );
   } else if (tab === "audit") {
@@ -81,13 +95,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   return (
     <>
       <PageHeader title={s.title} description={ws.org.name} />
-      <div className="mb-5 inline-flex h-9 items-center rounded-lg bg-secondary p-1">
-        {TABS.map((k) => (
-          <Link key={k} href={`/settings?tab=${k}`} className={`inline-flex h-full items-center rounded-md px-3 text-sm font-medium ${tab === k ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
-            {(s.tabs as Record<string, string>)[k]}
-          </Link>
-        ))}
-      </div>
+      <SettingsNav active={tab === "sender" ? "sender" : tab === "profile" ? "account" : "company"} />
       {body}
     </>
   );

@@ -1,5 +1,6 @@
 import { CheckCircle2, CircleSlash, FlaskConical, Mail } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
+import { SettingsNav } from "@/components/app/settings-nav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -38,11 +39,13 @@ export default async function IntegrationsPage({ searchParams }: PageProps<"/int
 
   return (
     <>
-      <PageHeader title={i.title} description={i.subtitle} />
+      <PageHeader title={t.nav.settings} description={ws.org.name} />
+      <SettingsNav active="mailbox" />
       {sp.connected && <Alert variant="success" className="mb-4"><CheckCircle2 /><AlertDescription className="text-foreground">{i.connected}</AlertDescription></Alert>}
       {typeof sp.error === "string" && <Alert variant="destructive" className="mb-4"><CircleSlash /><AlertDescription className="text-foreground">OAuth: {sp.error}</AlertDescription></Alert>}
-      <div className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
-        <Card>
+      <div className={ws.isPlatformAdmin ? "grid gap-6 xl:grid-cols-[1fr_1.2fr]" : "max-w-3xl"}>
+        {/* Data providers are operator plumbing: only platform admins see them. */}
+        {ws.isPlatformAdmin && <Card>
           <CardHeader><CardTitle>{i.providers}</CardTitle></CardHeader>
           <CardContent className="divide-y pt-2">
             {statuses.map((s) => (
@@ -67,9 +70,9 @@ export default async function IntegrationsPage({ searchParams }: PageProps<"/int
               </div>
               <Badge variant={inngestEnabled() ? "success" : "secondary"}>{inngestEnabled() ? "Live" : lang === "nl" ? "Ingebouwd" : "Built-in"}</Badge>
             </div>
-            {ws.isPlatformAdmin && <ProviderCheck />}
+            <ProviderCheck />
           </CardContent>
-        </Card>
+        </Card>}
 
         <Card>
           <CardHeader>

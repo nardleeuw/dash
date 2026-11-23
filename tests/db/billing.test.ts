@@ -114,11 +114,11 @@ describe("usage-based billing (start fee + monthly cost × markup)", () => {
     ]);
     const { monthlySpend, consumeCredits } = await import("@/server/usage");
     const spend = await monthlySpend(org);
-    expect(spend).toEqual({ costCents: 320, billableCents: 640, capCents: 1000 }); // markup 100%
+    expect(spend).toEqual({ costCents: 320, billableCents: 400, capCents: 1000 }); // markup 25%
 
     // Below the cap: allowed. Push cost over the cap (€10): blocked with SpendCapReachedError.
     await consumeCredits({ orgId: org, kind: "search", idempotencyKey: `cap-ok-${Date.now()}` });
-    await admin.from("api_usage").insert({ org_id: org, provider: "openai", operation: "email", cost_micros: 2_000_000, status: "ok" });
+    await admin.from("api_usage").insert({ org_id: org, provider: "openai", operation: "email", cost_micros: 5_000_000, status: "ok" });
     await expect(consumeCredits({ orgId: org, kind: "search", idempotencyKey: `cap-hit-${Date.now()}` })).rejects.toMatchObject({ name: "SpendCapReachedError" });
 
     // Stripe meter event: billable cents since the last report, once.
@@ -128,7 +128,7 @@ describe("usage-based billing (start fee + monthly cost × markup)", () => {
     const { reportUsageToStripe } = await import("@/server/billing/service");
     await reportUsageToStripe();
     const mine = (create.mock.calls as unknown as [{ payload: { stripe_customer_id: string; value: string } }][]).filter(([e]) => e.payload.stripe_customer_id.startsWith("cus_usage_"));
-    expect(mine.at(-1)?.[0].payload.value).toBe("1040"); // (320 + 200) × 2
+    expect(mine.at(-1)?.[0].payload.value).toBe("1025"); // (320 + 500) × 1.25
     create.mockClear();
     await reportUsageToStripe();
     expect((create.mock.calls as unknown as [{ payload: { stripe_customer_id: string } }][]).filter(([e]) => e.payload.stripe_customer_id.startsWith("cus_usage_"))).toHaveLength(0);

@@ -20,5 +20,6 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 1000 }, launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH } } }],
   webServer: process.env.E2E_BASE_URL
     ? undefined
-    : { command: "pnpm start", url: "http://localhost:3000", reuseExistingServer: true, timeout: 120_000 },
+    // Offline test runs have no public DNS: skip the MX check (never honoured in production).
+    : { command: "pnpm start", url: "http://localhost:3000", reuseExistingServer: true, timeout: 120_000, env: { CONTACTS_SKIP_MX: "1", KVK_ENABLED: "0", MOCK_PROVIDERS: "kvk,google_places,osm,pdok,hunter,openai,pagespeed,stripe" } },
 });

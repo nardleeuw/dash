@@ -3,8 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
 import {
-  BarChart3, Building2, Check, ChevronsUpDown, CreditCard, Database, Globe, Inbox, KanbanSquare,
-  LayoutDashboard, LogOut, Mail, Plug, Plus, Search, Settings, Users,
+  Check, ChevronsUpDown, Database, Globe, Inbox, LayoutDashboard, LogOut, Mail, Plus, Search, Settings, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "@/components/brand/logo";
@@ -39,20 +38,16 @@ export function Sidebar(props: SidebarProps) {
     { href: "/leads", label: t.nav.leads, icon: Database },
     { href: "/emails", label: t.nav.emails, icon: Mail },
     { href: "/inbox", label: t.nav.inbox, icon: Inbox, badge: props.inboxCount },
-    { href: "/crm", label: t.nav.crm, icon: KanbanSquare },
-    { href: "/analytics", label: t.nav.analytics, icon: BarChart3 },
   ];
+  // Mailbox (/integrations) and billing (/billing) live under Settings.
   const manage = [
-    { href: "/clients", label: t.nav.clients, icon: Building2 },
-    { href: "/integrations", label: t.nav.integrations, icon: Plug },
-    { href: "/billing", label: t.nav.billing, icon: CreditCard },
-    { href: "/settings", label: t.nav.settings, icon: Settings },
+    { href: "/settings", label: t.nav.settings, icon: Settings, also: ["/integrations", "/billing"] },
   ];
 
   const roles = t.roles as Record<string, string>;
 
-  const renderItem = (item: (typeof work)[number]) => {
-    const active = pathname === item.href || pathname.startsWith(item.href + "/");
+  const renderItem = (item: (typeof work)[number] & { also?: string[] }) => {
+    const active = [item.href, ...(item.also ?? [])].some((h) => pathname === h || pathname.startsWith(h + "/"));
     return (
       <Link
         key={item.href}

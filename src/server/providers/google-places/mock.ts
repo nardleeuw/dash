@@ -3,7 +3,7 @@ import type { GooglePlace, PlacesApi, TextSearchRequest } from "./client";
 const g = globalThis as unknown as { __mockPlaces?: Map<string, GooglePlace> };
 const cache = (g.__mockPlaces ??= new Map<string, GooglePlace>());
 
-/** Deterministic demo results. Names are prefixed "[Demo]"; websites use example.com. */
+/** Deterministic demo results. Names are prefixed "[Demo]"; websites use the fictional leadwerk-demo.nl domain. */
 export class MockPlaces implements PlacesApi {
   async searchText(req: TextSearchRequest) {
     const page = req.pageToken ? Number(req.pageToken) : 0;
@@ -25,7 +25,7 @@ export class MockPlaces implements PlacesApi {
         ],
         location: { latitude: centre.lat + ((n * 37) % 100 - 50) / 2000, longitude: centre.lng + ((n * 53) % 100 - 50) / 1500 },
         types: req.includedType ? [req.includedType, "establishment"] : ["establishment"],
-        websiteUri: n % 4 === 0 ? undefined : `https://example.com/${slug}`,
+        websiteUri: n % 4 === 0 ? undefined : `https://${slug.slice(0, 50).replace(/^-+|-+$/g, "")}.leadwerk-demo.nl`,
         nationalPhoneNumber: `030 ${String(1000000 + n * 7919).slice(0, 7)}`,
         rating: 3.5 + ((n * 7) % 15) / 10,
         userRatingCount: 5 + ((n * 13) % 200),

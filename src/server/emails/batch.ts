@@ -22,7 +22,14 @@ export type CreateBatchInput = {
   options?: BatchOptions;
 };
 
-export type BatchOptions = { research?: boolean; findEmails?: boolean };
+export type BatchOptions = {
+  research?: boolean;
+  findEmails?: boolean;
+  /** Per-batch writing overrides (fall back to the sender profile). */
+  personalization?: "subtle" | "balanced" | "strong";
+  formality?: "formal" | "informal";
+  email_length?: "short" | "medium" | "long";
+};
 
 /**
  * Create a generation batch: one generated_emails row per business (unique per
@@ -37,7 +44,12 @@ export async function createBatch(input: CreateBatchInput) {
       org_id: input.orgId, agency_profile_id: input.agencyProfileId, client_id: input.clientId ?? null, name: input.name ?? null,
       source: input.source, source_ref: input.sourceRef ?? {}, mode: input.mode, language: input.language,
       instructions: input.instructions ?? null, created_by: input.userId, status: "queued",
-      options: { research: input.options?.research !== false, findEmails: input.options?.findEmails !== false },
+      options: {
+        research: input.options?.research !== false, findEmails: input.options?.findEmails !== false,
+        ...(input.options?.personalization ? { personalization: input.options.personalization } : {}),
+        ...(input.options?.formality ? { formality: input.options.formality } : {}),
+        ...(input.options?.email_length ? { email_length: input.options.email_length } : {}),
+      },
     })
     .select("id")
     .single();

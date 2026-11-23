@@ -203,7 +203,7 @@ export default async function LandingPage() {
           <h2 className="text-center text-3xl font-semibold tracking-tight">Veelgestelde vragen</h2>
           <div className="mt-10 divide-y rounded-2xl border bg-background">
             {[
-              ["Waar komen de bedrijven vandaan?", "Uit Google Maps-gegevens, aangevuld met de KVK en OpenStreetMap. We doorzoeken het hele gebied dat je kiest, per branche."],
+              ["Waar komen de bedrijven vandaan?", "Uit Google Maps-gegevens, aangevuld met OpenStreetMap. We doorzoeken het hele gebied dat je kiest, per branche."],
               ["Hoe komen jullie aan de e-mailadressen?", "We lezen de website van het bedrijf, vragen Hunter en zoeken op internet. Elk adres krijgt zijn bron; wat we niet kunnen controleren, nemen we niet over."],
               ["Is elke e-mail echt anders?", "Ja. De AI leest per bedrijf de website en verwijst naar concrete dingen die daar staan. Jij keurt elke e-mail goed voordat hij de deur uitgaat."],
               ["Mag dit wel, zakelijk mailen?", "Zakelijke e-mail aan bedrijven is onder voorwaarden toegestaan. De software helpt met een verzendcontrole, afmeldlink en suppressielijst. Twijfel je over jouw situatie? Vraag juridisch advies."],

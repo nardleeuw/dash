@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2, FlaskConical } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
+import { SettingsNav } from "@/components/app/settings-nav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -63,7 +64,8 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
 
   return (
     <>
-      <PageHeader title={b.title} description={b.subtitle} actions={mode === "live" && sub?.stripe_customer_id && isOwner ? <PortalButton /> : null} />
+      <PageHeader title={t.nav.settings} description={ws.org.name} actions={mode === "live" && sub?.stripe_customer_id && isOwner ? <PortalButton /> : null} />
+      <SettingsNav active="billing" />
       {(() => {
         const chosen = (plans ?? []).find((p) => p.key === (typeof sp.plan === "string" ? sp.plan : null) && p.is_public);
         if (!chosen || (sub?.plan_key === chosen.key && sub?.status === "active")) return null;
@@ -111,7 +113,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
               <CardContent className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="text-base font-semibold">{b.startTitle}</p>
-                  <p className="text-sm text-muted-foreground">{fmt(b.checkoutUsageText, { price: formatCurrency((plans ?? []).find((p) => p.key === USAGE_PLAN_KEY)?.price_cents ?? 50000, locale) })}</p>
+                  <p className="text-sm text-muted-foreground">{fmt(b.checkoutUsageText, { price: formatCurrency((plans ?? []).find((p) => p.key === USAGE_PLAN_KEY)?.price_cents ?? 29900, locale) })}</p>
                 </div>
                 {isOwner && <div className="w-56"><PlanButton planKey={USAGE_PLAN_KEY} label={b.checkoutCta} /></div>}
               </CardContent>

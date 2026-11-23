@@ -78,12 +78,12 @@ export function checkEligibility(i: EligibilityInput): EligibilityResult {
     ));
   }
   if (i.recipientCategory === "unknown" && email) reasons.push(R("unknown_category", "warn", "De ontvangercategorie (persoon, zzp, bedrijf) is onbekend.", "The recipient category (person, sole trader, company) is unknown."));
-  if (!i.senderIdentityComplete) reasons.push(R("sender_identity", "block", "Vul je afzendergegevens in (bedrijfsnaam, adres en KVK-nummer) bij Instellingen.", "Complete your sender identity (legal name, address and KVK number) in Settings."));
+  if (!i.senderIdentityComplete) reasons.push(R("sender_identity", "block", "Vul je afzendergegevens in (bedrijfsnaam en adres) bij Instellingen.", "Complete your sender identity (legal name and address) in Settings."));
   if (!i.privacyNoticeConfigured) reasons.push(R("privacy_notice", "block", "Stel een privacyverklaring in bij Instellingen → Compliance.", "Configure a privacy notice in Settings → Compliance."));
   if (i.isMockContent) reasons.push(R("mock_content", i.sendTime && !i.sendTime.accountIsMock ? "block" : "warn", "Deze e-mail bevat demo-inhoud (mock-modus).", "This email contains demo content (mock mode)."));
   if (i.sendTime) {
     if (!i.sendTime.reviewApproved) reasons.push(R("not_approved", "block", "De e-mail is niet goedgekeurd.", "The email has not been approved."));
-    if (!i.sendTime.factCheckPassed) reasons.push(R("fact_check", "block", "De feitencheck bevat fouten.", "The fact-check contains errors."));
+    if (!i.sendTime.factCheckPassed) reasons.push(R("fact_check", "warn", "De feitencheck bevat fouten.", "The fact-check contains errors."));
   }
 
   return { eligible: !reasons.some((r) => r.severity === "block"), basis, reasons };

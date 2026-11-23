@@ -10,9 +10,9 @@ const num = (v: string | undefined, fallback: number) => (v && Number.isFinite(N
 export function billingConfig() {
   return {
     /** One-time start fee in cents (the 'usage' plan's price_cents is the source of truth for display). */
-    setupFeeCents: num(process.env.BILLING_SETUP_FEE_CENTS, 50_000),
-    /** Markup on provider cost, in percent (100 = customer pays 2× cost). */
-    markupPercent: num(process.env.BILLING_MARKUP_PERCENT, 100),
+    setupFeeCents: num(process.env.BILLING_SETUP_FEE_CENTS, 29_900),
+    /** Markup on provider cost, in percent (25 = customer pays 1.25× cost). */
+    markupPercent: num(process.env.BILLING_MARKUP_PERCENT, 25),
     /** Default monthly spending cap per workspace, in cents (customers can change theirs). */
     defaultSpendCapCents: num(process.env.BILLING_DEFAULT_CAP_CENTS, 25_000),
     /** Stripe Billing Meter event name for usage in cents. */

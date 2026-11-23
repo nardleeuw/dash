@@ -19,7 +19,7 @@ test("agency can go from sign-up to an approved, individually written email", as
   await expect(page.getByRole("heading", { name: /Welkom, E2E/ })).toBeVisible();
 
   // Sender profile
-  await page.goto("/emails?tab=profile");
+  await page.goto("/settings?tab=sender");
   await page.getByRole("button", { name: "Dienst toevoegen" }).click();
   await page.getByPlaceholder("Dienst", { exact: true }).fill("AI-receptionist voor praktijken");
   await page.fill("#call_to_action", "een kort gesprek van 15 minuten");
@@ -32,7 +32,7 @@ test("agency can go from sign-up to an approved, individually written email", as
   await page.fill("#kvk_number", "87654321");
   await page.fill("#postal_address", "Straat 1, 3511 AA Utrecht");
   await page.fill("#privacy_policy_url", "https://e2e.example/privacy");
-  await page.getByRole("button", { name: "Opslaan" }).click();
+  await page.getByRole("button", { name: "Opslaan" }).first().click();
   await expect(page.getByText("Opgeslagen").first()).toBeVisible();
 
   // Discover & import (mock Google Places; KVK test env when available)
@@ -49,19 +49,19 @@ test("agency can go from sign-up to an approved, individually written email", as
   // Generate individual emails for the imported businesses
   await page.goto("/leads");
   await page.locator("thead button[role=checkbox]").click();
-  await page.getByRole("button", { name: "E-mails genereren" }).click();
-  await page.getByRole("button", { name: "Generatie starten" }).click();
-  await page.waitForURL("**/emails?tab=batches");
+  await page.getByRole("button", { name: "E-mails maken" }).click();
+  await page.getByRole("button", { name: "2 e-mails maken" }).click();
+  await page.waitForURL("**/emails");
 
   // Review: wait until generation completed, open and approve one
   await page.goto("/emails");
   await expect(async () => {
     await page.reload();
-    await expect(page.getByText("Te beoordelen").first()).toBeVisible({ timeout: 2000 });
+    await expect(page.getByText("Klaar", { exact: true }).first()).toBeVisible({ timeout: 2000 });
   }).toPass({ timeout: 90_000 });
-  const subjects = await page.locator("table tbody tr td:nth-child(3) a span.truncate").allInnerTexts();
+  const subjects = await page.locator("table tbody tr td:nth-child(4) a").allInnerTexts();
   expect(new Set(subjects).size).toBe(subjects.length); // every email is different
-  await page.locator("table tbody tr a").first().click();
+  await page.locator("table tbody tr td:nth-child(4) a").first().click();
   await page.waitForURL(/\/emails\/[0-9a-f-]{36}$/);
   await expect(page.getByText("Feitencheck")).toBeVisible();
   await expect(page.getByText("Compliance")).toBeVisible();

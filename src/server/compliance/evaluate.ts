@@ -11,7 +11,8 @@ export async function loadSenderContext(admin: SupabaseClient, orgId: string): P
     admin.from("privacy_notices").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_active", true),
   ]);
   return {
-    senderIdentityComplete: Boolean(org?.legal_name && org?.kvk_number && org?.postal_address),
+    // KVK number is shown in the footer when present but not required to send.
+    senderIdentityComplete: Boolean(org?.legal_name && org?.postal_address),
     privacyNoticeConfigured: Boolean((notices ?? 0) > 0 || org?.privacy_policy_url),
     settings: readComplianceSettings(org?.settings as Record<string, unknown>),
   };

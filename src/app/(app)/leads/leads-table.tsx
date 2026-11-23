@@ -3,20 +3,18 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { AtSign, ChevronLeft, ChevronRight, Globe, ListPlus, Loader2, ShieldAlert, Tag, Trash2 } from "lucide-react";
+import { AtSign, ChevronLeft, ChevronRight, Globe, Loader2, ShieldAlert, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { LeadStatusBadge, ScoreBadge } from "@/components/app/badges";
 import { useT } from "@/i18n/client";
 import { fmt } from "@/i18n/format";
-import { addToListAction, createListAction, deleteBusinessesAction, removeFromListAction, setLeadStatusAction } from "./actions";
+import { addToListAction, createListAction, deleteBusinessesAction } from "./actions";
 import { LeadBulkExtras } from "./bulk-extras";
 
 export type LeadRow = {
@@ -70,33 +68,6 @@ export function LeadsTable(props: {
         {selected.size > 0 && canWrite && (
           <div className="flex flex-wrap items-center gap-2">
             <LeadBulkExtras ids={ids} onDone={() => setSelected(new Set())} />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={pending}><ListPlus />{t.leads.bulk.addToList}</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {props.lists.map((l) => (
-                  <DropdownMenuItem key={l.id} onSelect={() => start(async () => result(await addToListAction(ids, l.id)))}>{l.name}</DropdownMenuItem>
-                ))}
-                {props.lists.length > 0 && <DropdownMenuSeparator />}
-                <DropdownMenuItem onSelect={() => setNewListOpen(true)}>{t.leads.bulk.newList}</DropdownMenuItem>
-                {props.activeListId && (
-                  <DropdownMenuItem variant="destructive" onSelect={() => start(async () => result(await removeFromListAction(ids, props.activeListId)))}>
-                    {t.meta.locale === "nl" ? "Verwijderen uit deze lijst" : "Remove from this list"}
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={pending}><Tag />{t.leads.bulk.setStatus}</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {Object.entries(t.leadStatus).map(([k, v]) => (
-                  <DropdownMenuItem key={k} onSelect={() => start(async () => result(await setLeadStatusAction(ids, k)))}>{v}</DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
             {canDelete && (
               <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)} disabled={pending}>
                 <Trash2 className="text-destructive" />{t.leads.bulk.delete}
@@ -123,9 +94,9 @@ export function LeadsTable(props: {
               <TableHead>{t.leads.city}</TableHead>
               <TableHead>{t.leads.industry}</TableHead>
               <TableHead>{t.common.email}</TableHead>
+              <TableHead>{t.common.phone}</TableHead>
               <TableHead>{t.common.website}</TableHead>
-              <TableHead>{t.leads.status}</TableHead>
-              <TableHead className="text-right">{t.leads.score}</TableHead>
+
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -166,6 +137,7 @@ export function LeadsTable(props: {
                     <span className="flex max-w-[220px] items-center gap-1.5 truncate"><AtSign className="size-3.5 shrink-0 text-muted-foreground" />{r.email}{(r.email_count ?? 0) > 1 && <span className="text-xs text-muted-foreground">+{(r.email_count ?? 1) - 1}</span>}</span>
                   ) : <span className="text-xs text-muted-foreground">{t.leads.noEmailYet}</span>}
                 </TableCell>
+                <TableCell className="text-sm whitespace-nowrap">{r.phone ?? <span className="text-muted-foreground">—</span>}</TableCell>
                 <TableCell className="text-sm">
                   {r.website_url ? (
                     <a href={r.website_url} target="_blank" rel="noopener noreferrer nofollow" className="flex max-w-[180px] items-center gap-1.5 truncate text-primary hover:underline">
@@ -173,8 +145,7 @@ export function LeadsTable(props: {
                     </a>
                   ) : <span className="text-muted-foreground">—</span>}
                 </TableCell>
-                <TableCell><LeadStatusBadge status={r.lead_status} /></TableCell>
-                <TableCell className="text-right"><ScoreBadge score={r.lead_score} /></TableCell>
+
               </TableRow>
             ))}
           </TableBody>
