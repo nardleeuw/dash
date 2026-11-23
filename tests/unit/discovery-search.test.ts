@@ -11,7 +11,8 @@ describe("tiled Google search", () => {
     expect(new Set(tasks.map((t) => t.textQuery))).toEqual(new Set(["café", "lunchroom", "koffiebar", "brunch"]));
     // Query-major: the first 9 tasks cover the whole city with the main query.
     expect(tasks.slice(0, 9).every((t) => t.textQuery === "café")).toBe(true);
-    expect(tasks.every((t) => t.includedType === "cafe")).toBe(true);
+    expect(tasks.slice(0, 9).every((t) => t.includedType === "cafe")).toBe(true);
+    expect(tasks.slice(9).every((t) => t.includedType === undefined)).toBe(true);
   });
 
   it("tiles exactly cover the circle's bounding box", () => {

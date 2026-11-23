@@ -98,9 +98,11 @@ export function googleTasks(q: Pick<SearchRequest, "locations" | "industries" | 
     for (const ind of industries) {
       const queries = ind ? googleQueriesFor(ind, q.language).map((t) => (text ? `${t} ${text}` : t)) : text ? [text] : [];
       // Query-major order: the first calls cover the whole area with the main query.
-      for (const textQuery of queries) {
-        for (const rectangle of tiles) tasks.push({ textQuery, includedType: ind?.googleType, rectangle });
-      }
+      // Only the main query is restricted to the Google type; variants ("lunchroom")
+      // must also find places Google files under another type ("restaurant").
+      queries.forEach((textQuery, qi) => {
+        for (const rectangle of tiles) tasks.push({ textQuery, includedType: qi === 0 ? ind?.googleType : undefined, rectangle });
+      });
     }
   }
   return tasks.slice(0, GOOGLE_MAX_TASKS);
@@ -113,9 +115,10 @@ async function searchGoogle(q: SearchRequest, cursor: string | null, orgId: stri
   if (tasks.length === 0) return { provider: "google_places", results: [], nextCursor: null, notice: "needs_term" };
   const start = Math.max(0, Number(cursor ?? 0) || 0);
   const batch = tasks.slice(start, start + GOOGLE_TASKS_PER_CALL);
-  const lists = await Promise.all(
+  // One failing tile must not break the whole batch: keep what we got.
+  const settled = await Promise.allSettled(
     batch.map(async (task) => {
-      const out = [];
+      const out: Awaited<ReturnType<typeof places.client.searchText>>["places"] = [];
       let token: string | undefined;
       for (let page = 0; page < GOOGLE_MAX_PAGES; page++) {
         const res = await places.client.searchText({ ...task, pageToken: token, languageCode: q.language }, orgId);
@@ -126,6 +129,10 @@ async function searchGoogle(q: SearchRequest, cursor: string | null, orgId: stri
       return out;
     }),
   );
+  const failed = settled.filter((r) => r.status === "rejected");
+  for (const f of failed) console.error("[discovery] google task failed", (f as PromiseRejectedResult).reason);
+  if (failed.length === settled.length) throw (failed[0] as PromiseRejectedResult).reason;
+  const lists = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
   const unique = [...new Map(lists.flat().map((p) => [p.id, p])).values()];
   const done = start + batch.length;
   return {
