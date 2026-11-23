@@ -1,16 +1,15 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, Globe, MapPin, Phone, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Building2, Globe, MapPin, Phone } from "lucide-react";
 import { getWorkspace } from "@/server/auth";
 import { createClient } from "@/server/supabase/server";
 import { getDictionary } from "@/i18n/server";
 import { formatDate } from "@/i18n/format";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScoreBadge } from "@/components/app/badges";
 import { industryLabel } from "@/config/industries";
 import { formatPostalCode } from "@/server/discovery/normalize";
@@ -87,7 +86,6 @@ export default async function BusinessProfilePage({ params, searchParams }: Page
                 {b.is_mock && <Badge variant="mock">{p.mockRecord}</Badge>}
               </div>
               <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                {b.kvk_number && <span className="tabular">KVK {b.kvk_number}</span>}
                 {b.city && <span className="inline-flex items-center gap-1"><MapPin className="size-3.5" />{b.city}{b.province ? `, ${b.province}` : ""}</span>}
                 {b.industry && <span>{industryLabel(b.industry, t.meta.locale as "nl" | "en")}</span>}
               </p>
@@ -99,10 +97,6 @@ export default async function BusinessProfilePage({ params, searchParams }: Page
           </div>
         </div>
       </div>
-
-      {b.kvk_non_mailing && (
-        <Alert variant="destructive"><ShieldAlert /><AlertDescription className="text-foreground">{p.nonMailingWarning}</AlertDescription></Alert>
-      )}
 
       <Tabs defaultValue={typeof tab === "string" ? tab : "overview"}>
         <TabsList>
@@ -120,7 +114,6 @@ export default async function BusinessProfilePage({ params, searchParams }: Page
                 <dl className="divide-y">
                   {fieldRow(t.common.name, b.name, "name")}
                   {fieldRow(p.legalForm, b.legal_form, "legal_form")}
-                  {fieldRow(p.kvkNumber, b.kvk_number, "kvk_number")}
                   {fieldRow(t.leads.industry, industryLabel(b.industry, t.meta.locale as "nl" | "en"), "industry")}
                   {fieldRow(p.sbi, (b.sbi_codes ?? []).join(", "), "sbi_codes")}
                   {fieldRow(p.employees, b.employee_range, "employee_range")}

@@ -17,7 +17,6 @@ import { ProviderCheck } from "./provider-check";
 export const metadata = { title: "Integraties" };
 
 const LABELS: Record<string, { name: string; use: { nl: string; en: string } }> = {
-  kvk: { name: "KVK Handelsregister", use: { nl: "Bedrijfsgegevens, vestigingen, SBI", en: "Company data, establishments, SBI" } },
   google_places: { name: "Google Places", use: { nl: "Bedrijven zoeken, categorieën, telefoon", en: "Business search, categories, phone" } },
   osm: { name: "OpenStreetMap", use: { nl: "Bedrijven per branche en gebied", en: "Businesses by industry and area" } },
   pdok: { name: "PDOK Locatieserver", use: { nl: "Plaatsen, gemeenten, postcodes", en: "Places, municipalities, postcodes" } },

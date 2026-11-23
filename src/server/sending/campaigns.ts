@@ -56,7 +56,7 @@ export async function launchCampaign(orgId: string, campaignId: string) {
   if (!account || account.status !== "active") return { error: "account_inactive" as const };
 
   const sender = await loadSenderContext(admin, orgId);
-  if (!sender.senderIdentityComplete || !sender.privacyNoticeConfigured) return { error: "sender_identity" as const };
+  if (!sender.senderIdentityComplete) return { error: "sender_identity" as const };
 
   const { data: recipients } = await admin.from("campaign_recipients").select("id, business_id, email, generated_email_id, status").eq("campaign_id", campaignId).eq("status", "pending");
   const eligibleIds: string[] = [];

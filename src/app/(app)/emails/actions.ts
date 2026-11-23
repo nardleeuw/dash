@@ -204,7 +204,7 @@ export async function regenerateEmailsAction(ids: unknown, instructions?: unknow
     const instr = z.string().trim().max(800).optional().parse(instructions || undefined);
     // Emails already handed to a send run (scheduled or sent) are never rewritten.
     const supabase = await createClient();
-    const { data: inRuns } = await supabase.from("campaign_recipients").select("generated_email_id").eq("org_id", ws.org.id).in("generated_email_id", list);
+    const { data: inRuns } = await supabase.from("campaign_recipients").select("generated_email_id").eq("org_id", ws.org.id).in("generated_email_id", list).neq("status", "cancelled");
     const locked = new Set((inRuns ?? []).map((r) => r.generated_email_id));
     const res = await requeueEmails(ws.org.id, list.filter((id) => !locked.has(id)), instr ?? null);
     revalidatePath("/emails");
@@ -280,7 +280,7 @@ export async function sendApprovedAction(input: unknown): Promise<ActionResult<{
     if (p.allApproved || !ids.length) {
       // "Alles verzenden": every finished email with a recipient that was not rejected or sent before.
       const { data } = await supabase.from("generated_emails").select("id").eq("org_id", ws.org.id).eq("sequence_step", 0).neq("review_status", "rejected").eq("generation_status", "completed").not("recipient_email", "is", null).limit(2000);
-      const { data: inRuns } = await supabase.from("campaign_recipients").select("generated_email_id").eq("org_id", ws.org.id).in("generated_email_id", (data ?? []).map((r) => r.id));
+      const { data: inRuns } = await supabase.from("campaign_recipients").select("generated_email_id").eq("org_id", ws.org.id).in("generated_email_id", (data ?? []).map((r) => r.id)).neq("status", "cancelled");
       const taken = new Set((inRuns ?? []).map((r) => r.generated_email_id));
       ids = (data ?? []).map((r) => r.id).filter((id) => !taken.has(id));
     }

@@ -30,7 +30,7 @@ async function senderIdentity(admin: SupabaseClient, orgId: string, language: "n
     admin.from("privacy_notices").select("email_footer, url").eq("org_id", orgId).eq("is_active", true).eq("language", language).order("version", { ascending: false }).limit(1).maybeSingle(),
   ]);
   if (!org?.legal_name || !org.postal_address) return null;
-  return { legalName: org.legal_name, postalAddress: org.postal_address, kvkNumber: org.kvk_number, privacyUrl: notice?.url ?? org.privacy_policy_url, footerText: notice?.email_footer ?? null, language };
+  return { legalName: org.legal_name, postalAddress: org.postal_address, kvkNumber: null, privacyUrl: notice?.url ?? org.privacy_policy_url, footerText: notice?.email_footer ?? null, language };
 }
 
 /** Messages stuck in "sending" have an unknown outcome: never resend automatically. */

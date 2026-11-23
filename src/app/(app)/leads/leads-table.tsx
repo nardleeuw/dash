@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { AtSign, ChevronLeft, ChevronRight, Globe, Loader2, ShieldAlert, Trash2 } from "lucide-react";
+import { AtSign, ChevronLeft, ChevronRight, Globe, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,6 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useT } from "@/i18n/client";
 import { fmt } from "@/i18n/format";
 import { addToListAction, createListAction, deleteBusinessesAction } from "./actions";
@@ -114,16 +113,9 @@ export function LeadsTable(props: {
                   <div className="flex items-center gap-2">
                     <Link href={`/leads/${r.id}`} className="truncate font-medium hover:text-primary">{r.name}</Link>
                     {r.is_mock && <Badge variant="mock">{t.mock.label}</Badge>}
-                    {r.kvk_non_mailing && (
-                      <Tooltip>
-                        <TooltipTrigger><ShieldAlert className="size-4 text-destructive" /></TooltipTrigger>
-                        <TooltipContent>{t.leads.nonMailing}</TooltipContent>
-                      </Tooltip>
-                    )}
                   </div>
                   <div className="mt-0.5 text-xs text-muted-foreground">
-                    {r.kvk_number && <span className="tabular">KVK {r.kvk_number}</span>}
-                    {r.legal_form && <span> · {r.legal_form}</span>}
+                    {r.legal_form && <span>{r.legal_form}</span>}
                     {(r.location_count ?? 0) > 1 && <span> · {r.location_count} {t.meta.locale === "nl" ? "vestigingen" : "locations"}</span>}
                   </div>
                 </TableCell>

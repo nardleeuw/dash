@@ -49,7 +49,6 @@ export function OrganizationForm({ initial, canEdit }: { initial: { name: string
       <CardContent className="grid gap-4 md:grid-cols-2">
         {field("name", s.orgName)}
         {field("legal_name", s.legalName)}
-        {field("kvk_number", s.kvkNumber)}
         {field("postal_address", s.postalAddress)}
         <div className="space-y-1.5">
           <Label>{s.language}</Label>

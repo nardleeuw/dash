@@ -34,7 +34,7 @@ type ProviderStatus = "live" | "mock" | "disabled" | "test";
 type Saved = { id: string; name: string; filters: SearchFilters; last_run_at: string | null; last_result_count: number | null };
 type Suggestion = { id: string; type: "provincie" | "gemeente" | "woonplaats" | "postcode"; label: string; name: string; lat: number; lng: number };
 
-const PROVIDERS: DiscoveryProvider[] = ["kvk", "google_places", "osm"];
+const PROVIDERS: DiscoveryProvider[] = ["google_places", "osm"];
 const PROVIDER_LABEL: Record<DiscoveryProvider, string> = { kvk: "KVK", google_places: "Google Places", osm: "OpenStreetMap" };
 const TYPE_MAP: Record<Suggestion["type"], LocationFilter["type"]> = { provincie: "province", gemeente: "municipality", woonplaats: "city", postcode: "postcode" };
 
