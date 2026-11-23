@@ -63,7 +63,7 @@ export function SendDialog({ mailboxes, emailIds, count, label, variant = "defau
               const parts = [blocked ? fmt(s.blocked, { count: blocked }) : null, r.data.skipped ? fmt(s.skipped, { count: r.data.skipped }) : null].filter(Boolean).join(" ");
               toast.success(fmt(s.started, { count: r.data.activated }), { description: parts || undefined });
               setOpen(false);
-              router.push("/emails?tab=sends");
+              router.push("/emails?filter=sent");
             })}
           >
             {pending ? <Loader2 className="animate-spin" /> : <Send />}{s.start}

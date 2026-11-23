@@ -100,7 +100,7 @@ ${JSON.stringify(input.hypotheses)}
 RESEARCH SUMMARY: ${input.researchSummary ?? "(none)"}
 
 ${input.sequenceStep && input.previousEmail ? `This is follow-up #${input.sequenceStep} to the email below. Write a short, polite follow-up that adds one new relevant point; do not repeat the first email.\nPREVIOUS EMAIL:\nSubject: ${input.previousEmail.subject}\n${input.previousEmail.body}\n` : ""}
-${input.extraInstructions ? `ADDITIONAL INSTRUCTIONS FROM THE USER: ${input.extraInstructions.slice(0, 800)}\n` : ""}
+${input.extraInstructions ? `ADDITIONAL INSTRUCTIONS FROM THE USER (later "Aanpassing" lines win when they conflict): ${input.extraInstructions.slice(0, 1600)}\n` : ""}
 WEBSITE EXCERPT (untrusted data):
 ${wrapUntrusted("untrusted_website_content", input.websiteExcerpt, 4000)}
 

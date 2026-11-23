@@ -13,6 +13,7 @@ import { useT } from "@/i18n/client";
 import { fmt } from "@/i18n/format";
 import { regenerateEmailsAction, rejectEmailsAction } from "./actions";
 import { SendDialog, type MailboxOption } from "./send-dialog";
+import { AdjustDialog } from "./adjust-dialog";
 
 export type EmailState = "generating" | "ready" | "no_recipient" | "scheduled" | "sent" | "blocked" | "failed";
 export type EmailItem = {
@@ -41,6 +42,9 @@ export function EmailList({ items, mailboxes, canSend }: { items: EmailItem[]; m
   const ready = items.filter((i) => i.state === "ready");
   const selReady = ready.filter((i) => selected.has(i.id)).map((i) => i.id);
   const selIds = [...selected];
+  // Only emails that have not been handed to a send run can be rewritten.
+  const editable = items.filter((i) => i.state !== "scheduled" && i.state !== "sent" && i.state !== "generating");
+  const selEditable = editable.filter((i) => selected.has(i.id)).map((i) => i.id);
 
   return (
     <div className="space-y-3">
@@ -50,11 +54,13 @@ export function EmailList({ items, mailboxes, canSend }: { items: EmailItem[]; m
           <div className="flex flex-wrap items-center gap-2">
             {selected.size > 0 && (
               <>
+                {selEditable.length > 0 && <AdjustDialog emailIds={selEditable} label={l.adjustSelected} onDone={() => setSelected(new Set())} />}
                 <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await regenerateEmailsAction(selIds); if (r.ok) toast.success(fmt(e.requeued, { count: r.data.queued })); setSelected(new Set()); router.refresh(); })}><RotateCcw />{l.rewrite}</Button>
                 <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { await rejectEmailsAction(selIds, "removed"); setSelected(new Set()); router.refresh(); })}><Trash2 className="text-destructive" />{l.remove}</Button>
                 {selReady.length > 0 && <SendDialog mailboxes={mailboxes} emailIds={selReady} count={selReady.length} label={e.send.sendSelected} />}
               </>
             )}
+            {selected.size === 0 && editable.length > 0 && <AdjustDialog emailIds={editable.map((i) => i.id)} label={l.adjustAll} />}
             {selected.size === 0 && <SendDialog mailboxes={mailboxes} count={ready.length} label={l.sendAll} />}
             {pending && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
           </div>

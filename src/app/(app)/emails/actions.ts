@@ -202,7 +202,11 @@ export async function regenerateEmailsAction(ids: unknown, instructions?: unknow
     const ws = await requireRole("sales_rep");
     const list = uuids.parse(ids);
     const instr = z.string().trim().max(800).optional().parse(instructions || undefined);
-    const res = await requeueEmails(ws.org.id, list, instr ?? null);
+    // Emails already handed to a send run (scheduled or sent) are never rewritten.
+    const supabase = await createClient();
+    const { data: inRuns } = await supabase.from("campaign_recipients").select("generated_email_id").eq("org_id", ws.org.id).in("generated_email_id", list);
+    const locked = new Set((inRuns ?? []).map((r) => r.generated_email_id));
+    const res = await requeueEmails(ws.org.id, list.filter((id) => !locked.has(id)), instr ?? null);
     revalidatePath("/emails");
     return ok(res);
   });

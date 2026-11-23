@@ -3,6 +3,7 @@ import { factCheckEmail, personalizationScore } from "@/server/emails/fact-check
 import { pickRecipient } from "@/server/emails/recipient";
 import { mockEmail } from "@/server/emails/mock-writer";
 import { chooseOpportunity } from "@/server/emails/generate";
+import { combineInstructions } from "@/server/emails/batch";
 import type { AgencyProfile } from "@/server/agency";
 
 const agency: AgencyProfile = {
@@ -125,5 +126,22 @@ describe("sign-off", () => {
     const { ensureSignOff } = await import("@/server/emails/signoff");
     const body = "Hoi,\n\nInteresse?\n\nMet vriendelijke groet,\nNard";
     expect(ensureSignOff(body, { signature: null, sender_name: "Nard", agency_name: "Leadwerk", language: "nl" })).toBe(body);
+  });
+});
+
+describe("combineInstructions", () => {
+  it("adds an adjustment after the original instructions", () => {
+    expect(combineInstructions("Onderwerp: Nieuwe klanten nodig?\nEindig met de link.", "korter")).toBe("Onderwerp: Nieuwe klanten nodig?\nEindig met de link.\nAanpassing: korter");
+  });
+  it("works without earlier instructions", () => {
+    expect(combineInstructions(null, " noem geen prijzen ")).toBe("Aanpassing: noem geen prijzen");
+  });
+  it("drops the oldest adjustments first and keeps the original", () => {
+    let instr: string = "ORIGINEEL";
+    for (let i = 0; i < 50; i++) instr = combineInstructions(instr, `aanpassing nummer ${i} `.repeat(3), 300);
+    expect(instr.startsWith("ORIGINEEL\n")).toBe(true);
+    expect(instr.length).toBeLessThanOrEqual(300);
+    expect(instr).toContain("aanpassing nummer 49");
+    expect(instr).not.toContain("aanpassing nummer 0 ");
   });
 });

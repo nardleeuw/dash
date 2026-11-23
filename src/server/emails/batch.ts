@@ -121,11 +121,36 @@ export async function finalizeBatch(orgId: string, batchId: string) {
 }
 
 /** Re-queue specific emails (regenerate selected / failed). */
+/**
+ * Adds an adjustment to the instructions an email was written with. The original
+ * batch instructions stay first (they may hold the subject, link or closing line);
+ * the newest adjustments are kept when the combined text gets too long.
+ */
+export function combineInstructions(before: string | null | undefined, adjustment: string, max = 1600): string {
+  const head = before?.trim() ?? "";
+  const line = `Aanpassing: ${adjustment.trim()}`;
+  if (!head) return line.slice(0, max);
+  const lines = head.split("\n");
+  const original = lines.filter((l) => !l.startsWith("Aanpassing: ")).join("\n");
+  const adjustments = [...lines.filter((l) => l.startsWith("Aanpassing: ")), line];
+  // Drop the oldest adjustments first; never the original instructions.
+  while (adjustments.length > 1 && [original, ...adjustments].join("\n").length > max) adjustments.shift();
+  return [original, ...adjustments].filter(Boolean).join("\n").slice(0, max);
+}
+
 export async function requeueEmails(orgId: string, emailIds: string[], instructions?: string | null) {
   const admin = createAdminClient();
+  // Adjustments are added to the instructions the email was written with (they do not replace them).
+  if (instructions) {
+    const { data: current } = await admin.from("generated_emails").select("id, opportunity").eq("org_id", orgId).in("id", emailIds);
+    for (const e of current ?? []) {
+      const combined = combineInstructions((e.opportunity as { instructions?: string } | null)?.instructions, instructions);
+      await admin.from("generated_emails").update({ opportunity: { instructions: combined } }).eq("id", e.id).eq("org_id", orgId);
+    }
+  }
   const { data: rows } = await admin
     .from("generated_emails")
-    .update({ generation_status: "queued", review_status: "pending", error: null, attempts: 0, ...(instructions ? { opportunity: { instructions } } : {}) })
+    .update({ generation_status: "queued", review_status: "pending", error: null, attempts: 0 })
     .eq("org_id", orgId)
     .in("id", emailIds)
     .neq("generation_status", "generating")
