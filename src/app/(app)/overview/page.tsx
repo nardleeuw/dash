@@ -37,7 +37,7 @@ export default async function OverviewPage() {
     count(supabase.from("outbound_messages").select("id", { count: "exact", head: true }).eq("org_id", org).eq("status", "sent")),
     count(supabase.from("replies").select("id", { count: "exact", head: true }).eq("org_id", org).eq("is_auto_reply", false).gte("received_at", since)),
     count(supabase.from("replies").select("id", { count: "exact", head: true }).eq("org_id", org).in("ai_category", POSITIVE).gte("received_at", since)),
-    count(supabase.from("suppression_records").select("id", { count: "exact", head: true }).eq("org_id", org).eq("reason", "unsubscribed")),
+    count(supabase.from("suppression_records").select("id", { count: "exact", head: true }).eq("org_id", org).eq("reason", "unsubscribe")),
     supabase.from("agency_profiles").select("services").eq("org_id", org).is("client_id", null).maybeSingle(),
     supabase.from("organizations").select("legal_name, postal_address").eq("id", org).single(),
     count(supabase.from("privacy_notices").select("id", { count: "exact", head: true }).eq("org_id", org).eq("is_active", true)),

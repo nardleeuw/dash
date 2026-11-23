@@ -2,7 +2,7 @@ import { z } from "zod";
 import { UNTRUSTED_DATA_RULES, wrapUntrusted } from "@/server/ai/sanitize";
 import type { AgencyProfile } from "@/server/agency";
 
-export const EMAIL_PROMPT_VERSION = "email-v2";
+export const EMAIL_PROMPT_VERSION = "email-v3";
 
 export const emailSchema = z.object({
   subject: z.string(),
@@ -46,7 +46,8 @@ STYLE:
 - Plain text only. No markdown, no emojis, no bullet lists unless natural, no links except the agency website if provided.
 - ${level === "subtle" ? "Open naturally and professionally (no \"I hope this finds you well\"); the single company reference may be in the first or second sentence." : "Open with something specific to THIS company (not \"I hope this finds you well\")."}
 - Connect exactly one concrete opportunity to the agency's relevant service.
-- End with this call to action: ${agency.call_to_action || (nl ? "een kort vrijblijvend gesprek van 15 minuten" : "a short 15-minute call")}.
+- CALL TO ACTION: end with exactly ONE short, low-friction question that is easy to answer with "yes" (interest-based, not a meeting demand). Good: offering to send a short example or a quick idea for their situation, or asking whether this is relevant for them right now. Not allowed: proposing specific dates/times, "let me know if you have any questions", multiple questions, calendar links (unless the agency CTA contains one), pressure or urgency.
+- The agency's preferred call to action — phrase it as such a question: ${agency.call_to_action || (nl ? "aanbieden om een kort voorbeeld te sturen van hoe dit er voor hun bedrijf uit zou zien" : "offer to send a short example of how this would look for their business")}.
 - Never use these words or phrases: ${agency.avoid_phrases.length ? agency.avoid_phrases.join("; ") : "(none specified)"}.
 - Do NOT add an unsubscribe line or legal footer — it is added automatically.
 - Sign off with the signature provided (or the sender name).

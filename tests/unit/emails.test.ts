@@ -99,3 +99,14 @@ describe("writing preferences in the email prompt", () => {
     expect(custom).toContain("'je/jij'");
   });
 });
+
+describe("call to action rules", () => {
+  it("asks for one low-friction yes-question and uses the agency CTA", async () => {
+    const { emailSystemPrompt } = await import("@/server/ai/prompts/email");
+    const base = { id: "x", client_id: null, agency_name: "A", website: null, description: null, services: [], products: null, target_industries: [], ideal_customer_profile: null, unique_selling_proposition: null, tone_of_voice: null, writing_style: null, language: "nl" as const, email_length: "short" as const, call_to_action: null, example_emails: [], avoid_phrases: [], sender_name: null, sender_title: null, signature: null };
+    const p = emailSystemPrompt(base);
+    expect(p).toContain("exactly ONE short, low-friction question");
+    expect(p).toContain("kort voorbeeld te sturen");
+    expect(emailSystemPrompt({ ...base, call_to_action: "gratis lijst met 25 leads" })).toContain("gratis lijst met 25 leads");
+  });
+});

@@ -1,14 +1,12 @@
 /**
  * The hard sending-eligibility gate. Pure and deterministic.
  *
- * Design principles (configurable, conservative defaults):
- *  - Nothing is eligible without a documented legal basis for THIS address:
- *    prior consent, an existing customer relationship (soft opt-in), or a
- *    workspace-enabled "other statutory exception" with written justification.
- *  - Publicly available or generic business addresses (info@…) are NOT
- *    automatically eligible.
- *  - Suppression, objections, invalid addresses and KVK non-mailing always block.
- *  - The sender's identity and a privacy notice must be configured.
+ * Design (operator decision): cold outreach is sent on the sender's own
+ * responsibility. A missing documented legal basis and a missing privacy
+ * notice are shown as warnings. Hard blocks remain only where the recipient
+ * said no or delivery is impossible: unsubscribed/suppressed, KVK
+ * non-mailing, invalid addresses, no address, and a missing sender identity
+ * (name + address in every email). Every email carries an unsubscribe link.
  * This encodes product rules, not legal advice; users remain responsible.
  */
 export type Basis = "consent" | "existing_customer" | "other_statutory_exception";
@@ -72,14 +70,14 @@ export function checkEligibility(i: EligibilityInput): EligibilityResult {
   if (email && !basis) {
     const generic = i.recipientCategory === "legal_entity_generic";
     reasons.push(R(
-      "no_legal_basis", "block",
+      "no_legal_basis", "warn",
       `Geen gedocumenteerde toestemming of wettelijke uitzondering voor dit adres${generic ? " (een algemeen bedrijfsadres is niet automatisch toegestaan)" : ""}.`,
       `No documented consent or statutory exception for this address${generic ? " (a generic business address is not automatically allowed)" : ""}.`,
     ));
   }
   if (i.recipientCategory === "unknown" && email) reasons.push(R("unknown_category", "warn", "De ontvangercategorie (persoon, zzp, bedrijf) is onbekend.", "The recipient category (person, sole trader, company) is unknown."));
   if (!i.senderIdentityComplete) reasons.push(R("sender_identity", "block", "Vul je afzendergegevens in (bedrijfsnaam en adres) bij Instellingen.", "Complete your sender identity (legal name and address) in Settings."));
-  if (!i.privacyNoticeConfigured) reasons.push(R("privacy_notice", "block", "Stel een privacyverklaring in bij Instellingen → Compliance.", "Configure a privacy notice in Settings → Compliance."));
+  if (!i.privacyNoticeConfigured) reasons.push(R("privacy_notice", "warn", "Stel een privacyverklaring in bij Instellingen → Compliance.", "Configure a privacy notice in Settings → Compliance."));
   if (i.isMockContent) reasons.push(R("mock_content", i.sendTime && !i.sendTime.accountIsMock ? "block" : "warn", "Deze e-mail bevat demo-inhoud (mock-modus).", "This email contains demo content (mock mode)."));
   if (i.sendTime) {
     if (!i.sendTime.reviewApproved) reasons.push(R("not_approved", "block", "De e-mail is niet goedgekeurd.", "The email has not been approved."));

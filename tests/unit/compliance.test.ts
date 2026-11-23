@@ -16,32 +16,35 @@ const ok: EligibilityInput = {
   now,
 };
 const codes = (i: EligibilityInput) => checkEligibility(i).reasons.filter((r) => r.severity === "block").map((r) => r.code);
+const warns = (i: EligibilityInput) => checkEligibility(i).reasons.filter((r) => r.severity === "warn").map((r) => r.code);
 
 describe("hard eligibility gate", () => {
   it("allows an address with documented consent", () => {
     expect(checkEligibility(ok)).toMatchObject({ eligible: true, basis: "consent" });
   });
 
-  it("blocks without a documented basis — including generic addresses", () => {
-    expect(codes({ ...ok, permissions: [] })).toEqual(["no_legal_basis"]);
+  it("allows sending without a documented basis, with a warning — including generic addresses", () => {
+    // No documented basis: sent on the sender's responsibility, shown as a warning.
+    expect(codes({ ...ok, permissions: [] })).toEqual([]);
+    expect(warns({ ...ok, permissions: [] })).toContain("no_legal_basis");
     const generic = checkEligibility({ ...ok, email: "info@bakkerij.nl", recipientCategory: "legal_entity_generic", permissions: [] });
-    expect(generic.eligible).toBe(false);
-    expect(generic.reasons[0].nl).toContain("niet automatisch toegestaan");
+    expect(generic.eligible).toBe(true);
+    expect(generic.reasons.find((r) => r.code === "no_legal_basis")?.severity).toBe("warn");
   });
 
   it("ignores revoked, expired, future or other-address permissions", () => {
     const p = ok.permissions[0];
-    expect(codes({ ...ok, permissions: [{ ...p, revoked_at: "2026-06-01T00:00:00Z" }] })).toContain("no_legal_basis");
-    expect(codes({ ...ok, permissions: [{ ...p, expires_at: "2026-06-01T00:00:00Z" }] })).toContain("no_legal_basis");
-    expect(codes({ ...ok, permissions: [{ ...p, obtained_at: "2027-01-01T00:00:00Z" }] })).toContain("no_legal_basis");
-    expect(codes({ ...ok, permissions: [{ ...p, email: "piet@bakkerij.nl" }] })).toContain("no_legal_basis");
+    expect(warns({ ...ok, permissions: [{ ...p, revoked_at: "2026-06-01T00:00:00Z" }] })).toContain("no_legal_basis");
+    expect(warns({ ...ok, permissions: [{ ...p, expires_at: "2026-06-01T00:00:00Z" }] })).toContain("no_legal_basis");
+    expect(warns({ ...ok, permissions: [{ ...p, obtained_at: "2027-01-01T00:00:00Z" }] })).toContain("no_legal_basis");
+    expect(warns({ ...ok, permissions: [{ ...p, email: "piet@bakkerij.nl" }] })).toContain("no_legal_basis");
   });
 
   it("only accepts bases enabled by the workspace; exceptions need a justification", () => {
     const exc = { ...ok.permissions[0], basis: "other_statutory_exception" as const, justification: "short" };
-    expect(codes({ ...ok, permissions: [exc] })).toContain("no_legal_basis"); // not enabled by default
+    expect(warns({ ...ok, permissions: [exc] })).toContain("no_legal_basis"); // not enabled by default
     const enabled = readComplianceSettings({ compliance: { accepted_bases: ["consent", "other_statutory_exception"] } });
-    expect(codes({ ...ok, permissions: [exc], settings: enabled })).toContain("no_legal_basis"); // justification too short
+    expect(warns({ ...ok, permissions: [exc], settings: enabled })).toContain("no_legal_basis"); // justification too short
     expect(checkEligibility({ ...ok, permissions: [{ ...exc, justification: "Documented exception because of an existing contract (ref 123)" }], settings: enabled }).eligible).toBe(true);
   });
 
@@ -50,7 +53,7 @@ describe("hard eligibility gate", () => {
     expect(codes({ ...ok, emailVerification: "invalid" })).toContain("invalid_address");
     expect(codes({ ...ok, kvkNonMailing: true })).toContain("kvk_non_mailing");
     expect(codes({ ...ok, senderIdentityComplete: false })).toContain("sender_identity");
-    expect(codes({ ...ok, privacyNoticeConfigured: false })).toContain("privacy_notice");
+    expect(warns({ ...ok, privacyNoticeConfigured: false })).toContain("privacy_notice");
     expect(codes({ ...ok, email: null })).toContain("no_recipient");
   });
 

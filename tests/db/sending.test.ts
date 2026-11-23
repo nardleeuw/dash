@@ -55,13 +55,15 @@ describe("campaign sending", () => {
   it("adds approved recipients and launches through the compliance gate", async () => {
     const { addRecipients, launchCampaign } = await import("@/server/sending/campaigns");
     const a = await approvedEmailFor("Bakkerij Een", "jan@bakkerij-een.nl");
-    const b = await approvedEmailFor("Bakkerij Twee", "piet@bakkerij-twee.nl", false); // no legal basis
+    const b = await approvedEmailFor("Bakkerij Twee", "piet@bakkerij-twee.nl", false); // no legal basis: allowed (warning)
     const res = await addRecipients(orgId, campaignId, [a.emailId, b.emailId, a.emailId]);
     expect(res.added).toBe(2);
+    // An unsubscribed address is always blocked.
+    await admin.from("suppression_records").insert({ org_id: orgId, email: "piet@bakkerij-twee.nl", reason: "unsubscribe", source: "test" });
     const launch = await launchCampaign(orgId, campaignId);
-    expect(launch).toMatchObject({ activated: 1, blocked: { no_legal_basis: 1 } });
+    expect(launch).toMatchObject({ activated: 1, blocked: { suppressed: 1 } });
     const { data: rs } = await admin.from("campaign_recipients").select("id, email, status, stop_reason").eq("campaign_id", campaignId);
-    expect(rs!.find((r) => r.email === "piet@bakkerij-twee.nl")).toMatchObject({ status: "stopped", stop_reason: "no_legal_basis" });
+    expect(rs!.find((r) => r.email === "piet@bakkerij-twee.nl")).toMatchObject({ status: "stopped", stop_reason: "suppressed" });
     recipientId = rs!.find((r) => r.email === "jan@bakkerij-een.nl")!.id;
   });
 
