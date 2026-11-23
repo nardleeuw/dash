@@ -2,8 +2,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { AlertTriangle, Loader2, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useT } from "@/i18n/client";
 import { fmt } from "@/i18n/format";
-import { regenerateEmailsAction, rejectEmailsAction } from "./actions";
+import { rejectEmailsAction } from "./actions";
 import { SendDialog, type MailboxOption } from "./send-dialog";
 import { AdjustDialog } from "./adjust-dialog";
 
@@ -54,8 +53,7 @@ export function EmailList({ items, mailboxes, canSend }: { items: EmailItem[]; m
           <div className="flex flex-wrap items-center gap-2">
             {selected.size > 0 && (
               <>
-                {selEditable.length > 0 && <AdjustDialog emailIds={selEditable} label={l.adjustSelected} onDone={() => setSelected(new Set())} />}
-                <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await regenerateEmailsAction(selIds); if (r.ok) toast.success(fmt(e.requeued, { count: r.data.queued })); setSelected(new Set()); router.refresh(); })}><RotateCcw />{l.rewrite}</Button>
+                <AdjustDialog emailIds={selEditable} label={l.adjustSelected} onDone={() => setSelected(new Set())} />
                 <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { await rejectEmailsAction(selIds, "removed"); setSelected(new Set()); router.refresh(); })}><Trash2 className="text-destructive" />{l.remove}</Button>
                 {selReady.length > 0 && <SendDialog mailboxes={mailboxes} emailIds={selReady} count={selReady.length} label={e.send.sendSelected} />}
               </>

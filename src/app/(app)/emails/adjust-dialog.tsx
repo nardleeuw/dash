@@ -22,7 +22,7 @@ export function AdjustDialog({ emailIds, label, onDone }: { emailIds: string[]; 
 
   function submit() {
     start(async () => {
-      const r = await regenerateEmailsAction(emailIds, text.trim());
+      const r = await regenerateEmailsAction(emailIds, text.trim() || undefined);
       if (!r.ok) {
         toast.error((t.common.errors as Record<string, string>)[r.error] ?? r.error);
         return;
@@ -49,7 +49,7 @@ export function AdjustDialog({ emailIds, label, onDone }: { emailIds: string[]; 
         <p className="text-xs text-muted-foreground">{a.hint}</p>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>{t.common.cancel}</Button>
-          <Button disabled={pending || text.trim().length < 3} onClick={submit}>{pending && <Loader2 className="animate-spin" />}{fmt(a.submit, { count })}</Button>
+          <Button disabled={pending || count === 0} onClick={submit}>{pending && <Loader2 className="animate-spin" />}{fmt(a.submit, { count })}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
