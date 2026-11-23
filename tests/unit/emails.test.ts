@@ -110,3 +110,20 @@ describe("call to action rules", () => {
     expect(emailSystemPrompt({ ...base, call_to_action: "gratis lijst met 25 leads" })).toContain("gratis lijst met 25 leads");
   });
 });
+
+describe("sign-off", () => {
+  it("adds a greeting and name when the model ended with a link line, and cleans '?.'", async () => {
+    const { ensureSignOff } = await import("@/server/emails/signoff");
+    const body = "Hoi Mark,\n\nSteek je nu wekelijks uren in acquisitie? Interesse?.\n\nBenieuwd geworden? Bekijk alvast hoe het werkt: https://leadwerk-app.vercel.app";
+    const out = ensureSignOff(body, { signature: null, sender_name: "Nard", agency_name: "Leadwerk", language: "nl", formality: "informal" });
+    expect(out).toContain("Interesse?\n");
+    expect(out.endsWith("https://leadwerk-app.vercel.app\n\nGroet,\nNard\nLeadwerk")).toBe(true);
+    expect(ensureSignOff(body, { signature: "Met vriendelijke groet,\nNard | Leadwerk", sender_name: "Nard", agency_name: "Leadwerk", language: "nl" }).endsWith("Met vriendelijke groet,\nNard | Leadwerk")).toBe(true);
+  });
+
+  it("leaves emails that are already signed alone", async () => {
+    const { ensureSignOff } = await import("@/server/emails/signoff");
+    const body = "Hoi,\n\nInteresse?\n\nMet vriendelijke groet,\nNard";
+    expect(ensureSignOff(body, { signature: null, sender_name: "Nard", agency_name: "Leadwerk", language: "nl" })).toBe(body);
+  });
+});

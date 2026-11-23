@@ -6,6 +6,7 @@ import { evaluateRecipient, loadSenderContext } from "@/server/compliance/evalua
 import { providerFor, type EmailAccountRow } from "./accounts";
 import { accountCapacity } from "./limits";
 import { composeMessage, type SenderIdentity } from "./compose";
+import { ensureSignOff } from "@/server/emails/signoff";
 import { followUpTime, isWithinWindow, nextWindowStart, type Window } from "./schedule";
 import { SendError } from "./providers/types";
 
@@ -128,9 +129,15 @@ export async function processRecipient(admin: SupabaseClient, r: Recipient): Pro
     }
   }
 
+  // Emails written before sign-offs were guaranteed still get a greeting and name.
+  const { data: profile } = email.agency_profile_id
+    ? await admin.from("agency_profiles").select("signature, sender_name, agency_name, language, formality").eq("id", email.agency_profile_id).maybeSingle()
+    : { data: null };
+  const body = profile ? ensureSignOff(email.body as string, { ...profile, language: profile.language === "en" ? "en" : "nl", formality: profile.formality === "informal" ? "informal" : "formal" }) : (email.body as string);
+
   const msg = composeMessage({
     orgId: r.org_id, appUrl: env().APP_URL, from: { name: account.display_name, email: account.email_address }, to: r.email,
-    subject, body: email.body, identity, thread,
+    subject, body, identity, thread,
   });
 
   // Duplicate-send guard: exactly one outbound row per (recipient, step).

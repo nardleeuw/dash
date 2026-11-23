@@ -12,6 +12,7 @@ import { industryLabel } from "@/config/industries";
 import { factCheckEmail, personalizationScore } from "./fact-check";
 import { mockEmail } from "./mock-writer";
 import { pickRecipient, type ContactCandidate } from "./recipient";
+import { ensureSignOff } from "./signoff";
 import { evaluateEmailCompliance } from "@/server/compliance/evaluate";
 
 const RESEARCH_MAX_AGE_DAYS = 30;
@@ -202,6 +203,11 @@ export async function generateEmailById(orgId: string, emailId: string) {
     if ((email.attempts ?? 0) + 1 < 3) throw new RetryableGenerationError((err as Error).message);
     return { status: "failed" };
   }
+
+  // Always close with a greeting and the sender's name.
+  const signer = { signature: agency.signature, sender_name: agency.sender_name, agency_name: agency.agency_name, language: agency.language, formality: agency.formality };
+  output.body = ensureSignOff(output.body, signer);
+  output.alt_body = ensureSignOff(output.alt_body, signer);
 
   // Fact-check against exactly the material the writer was allowed to use.
   const sourceTexts = [
