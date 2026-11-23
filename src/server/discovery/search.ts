@@ -236,7 +236,8 @@ export async function runDiscovery(orgId: string, userId: string, q: SearchReque
       const err = s.reason;
       if (err?.name === "CreditsExhaustedError") throw err;
       console.error("[discovery]", providers[i], err);
-      errors.push({ provider: providers[i], message: err instanceof ProviderError ? `provider_error_${err.status ?? "network"}` : "provider_error" });
+      const kind = err instanceof ProviderError ? `provider_error_${err.status ?? "network"}` : `provider_error:${String(err?.name ?? "Error").slice(0, 40)}${err?.code ? ":" + String(err.code).slice(0, 20) : ""}`;
+      errors.push({ provider: providers[i], message: kind });
     }
   });
   const all = applyResultFilters(pages.flatMap((p) => p.results), q);
