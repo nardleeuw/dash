@@ -11,7 +11,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 5 Campaigns | Mail adapters, eligibility gate, queue, schedule, rate limits, follow-ups, unsubscribe | ✅ |
 | 6 Inbox & CRM | Reply sync + matching, AI categorisation, pipeline, tasks, notes | ✅ |
 | 7 Analytics & billing | Dashboard, usage, Stripe checkout/portal/webhooks, limits | ✅ |
-| 8 Production readiness | Security review, e2e tests, deployment (Vercel + Supabase) | 🟡 |
+| 8 Production readiness | Security review, e2e tests, deployment (Vercel + Supabase) | 🟡 staging live |
 
 ## Phase reports
 
@@ -203,11 +203,16 @@ HSTS, COOP, etc.); error, not-found, global-error and loading states; audit
 log view; Playwright end-to-end suite (sign-up → profile → identity → discover
 → import → generate → review → approve; auth redirect; headers); GitHub
 Actions CI (lint, typecheck, unit, local Supabase + DB tests, build, e2e);
-`vercel.json` (fra1 + cron fallback that steps aside when Inngest is on);
+`vercel.json` (fra1); Supabase pg_cron scheduler (steps aside when Inngest is on);
 `scripts/deploy-supabase.mjs` (Management API); deployment and security docs.
 
 **Tests:** 74 unit · 52 DB · 3 e2e — all passing; lint clean; `pnpm build` passes.
 
-**Not done (blocked):** actual deployment — the Supabase (401) and Vercel
-(403) tokens were rejected; no GitHub repository was provided yet, so nothing
-has been pushed. OpenAI account has no quota (mock writer active locally).
+**Deployed (staging):** Supabase project in Frankfurt with all migrations and
+pg_cron jobs (campaigns-tick 5 min, inbox-sync 10 min, retention-purge daily,
+verified 200 from the live app); Vercel project `leadwerk` linked to GitHub,
+live at https://leadwerk-app.vercel.app with `APP_ENV=staging`.
+
+**Still open:** OpenAI/Hunter/Google keys in Vercel, then `APP_ENV=production`;
+before selling: Stripe, custom SMTP for auth emails, Vercel Pro (Hobby is
+non-commercial), KVK production key, product name and domain, legal review.
