@@ -100,3 +100,38 @@ describe("rate limiter", () => {
     expect(denied.error).not.toBeNull(); // not callable by end users
   });
 });
+
+describe("usage-based billing (start fee + monthly cost × markup)", () => {
+  it("computes cost, applies the markup, enforces the cap and reports usage to Stripe", async () => {
+    const { vi } = await import("vitest");
+    const user = await createTestUser("usage");
+    const org = await createOrgFor(user, `Usage Org ${Date.now()}`);
+    await admin.from("subscriptions").update({ plan_key: "usage", status: "active", setup_paid_at: new Date(Date.now() - 86_400_000).toISOString(), usage_reported_until: new Date(Date.now() - 3_600_000).toISOString(), stripe_customer_id: `cus_usage_${Date.now()}`, limit_overrides: { spend_cap_cents: 1000 } }).eq("org_id", org);
+    // €3.20 of provider cost this hour (cost_micros are millionths of a euro)
+    await admin.from("api_usage").insert([
+      { org_id: org, provider: "google_places", operation: "searchText", cost_micros: 3_200_000, status: "ok" },
+      { org_id: org, provider: "openai", operation: "email", cost_micros: 1_000_000, status: "error" }, // failed calls are not billed
+    ]);
+    const { monthlySpend, consumeCredits } = await import("@/server/usage");
+    const spend = await monthlySpend(org);
+    expect(spend).toEqual({ costCents: 320, billableCents: 640, capCents: 1000 }); // markup 100%
+
+    // Below the cap: allowed. Push cost over the cap (€10): blocked with SpendCapReachedError.
+    await consumeCredits({ orgId: org, kind: "search", idempotencyKey: `cap-ok-${Date.now()}` });
+    await admin.from("api_usage").insert({ org_id: org, provider: "openai", operation: "email", cost_micros: 2_000_000, status: "ok" });
+    await expect(consumeCredits({ orgId: org, kind: "search", idempotencyKey: `cap-hit-${Date.now()}` })).rejects.toMatchObject({ name: "SpendCapReachedError" });
+
+    // Stripe meter event: billable cents since the last report, once.
+    const create = vi.fn(async () => ({}));
+    vi.doMock("@/server/billing/stripe", () => ({ stripe: () => ({ billing: { meterEvents: { create } } }), stripeMode: () => "live" }));
+    vi.resetModules();
+    const { reportUsageToStripe } = await import("@/server/billing/service");
+    await reportUsageToStripe();
+    const mine = (create.mock.calls as unknown as [{ payload: { stripe_customer_id: string; value: string } }][]).filter(([e]) => e.payload.stripe_customer_id.startsWith("cus_usage_"));
+    expect(mine.at(-1)?.[0].payload.value).toBe("1040"); // (320 + 200) × 2
+    create.mockClear();
+    await reportUsageToStripe();
+    expect((create.mock.calls as unknown as [{ payload: { stripe_customer_id: string } }][]).filter(([e]) => e.payload.stripe_customer_id.startsWith("cus_usage_"))).toHaveLength(0);
+    vi.doUnmock("@/server/billing/stripe");
+  });
+});

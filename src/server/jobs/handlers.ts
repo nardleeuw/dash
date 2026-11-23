@@ -26,6 +26,11 @@ export const handlers: HandlerMap = {
   },
   "retention/purge": async () => purgeExpiredData(),
   "emails/resume": async () => (await import("@/server/emails/batch")).resumeStaleGeneration(),
+  "billing/report-usage": async () => {
+    const { stripeMode } = await import("@/server/billing/stripe");
+    if (stripeMode() !== "live") return { skipped: "stripe_not_live" };
+    return (await import("@/server/billing/service")).reportUsageToStripe();
+  },
   "contacts/bulk.requested": async ({ orgId, userId, businessIds }) => {
     const { findBusinessEmails } = await import("@/server/contacts/finder");
     const queue = [...businessIds];
@@ -36,7 +41,7 @@ export const handlers: HandlerMap = {
           const r = await findBusinessEmails(orgId, userId, id);
           if (!("error" in r)) found += r.added;
         } catch (err) {
-          if (["CreditsExhaustedError", "PaymentRequiredError"].includes((err as Error).name)) return;
+          if (["CreditsExhaustedError", "PaymentRequiredError", "SpendCapReachedError"].includes((err as Error).name)) return;
           console.error("[contacts] bulk lookup failed", id, (err as Error).message);
         }
       }

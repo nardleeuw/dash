@@ -48,7 +48,7 @@ export async function signUpAction(_prev: AuthState, formData: FormData): Promis
   if (await limited("signup", 10)) return { error: "rate_limited" };
   const supabase = await createClient();
   const locale = await getLocale();
-  const plan = z.enum(["starter", "growth", "pro"]).safeParse(formData.get("plan"));
+  const plan = z.enum(["usage", "starter", "growth", "pro"]).safeParse(formData.get("plan"));
   const afterSignup = plan.success ? `/onboarding?plan=${plan.data}` : "/onboarding";
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,

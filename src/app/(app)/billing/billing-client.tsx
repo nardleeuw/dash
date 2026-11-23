@@ -10,12 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useT } from "@/i18n/client";
 import { fmt } from "@/i18n/format";
-import { buyPackAction, choosePlanAction, openPortalAction, savePlanAction, syncStripeAction } from "./actions";
+import { buyPackAction, choosePlanAction, openPortalAction, savePlanAction, setSpendCapAction, syncStripeAction } from "./actions";
+import { Label } from "@/components/ui/label";
 
 function useRun() {
   const t = useT();
   const router = useRouter();
-  return (r: { ok: boolean; error?: string; data?: { simulated?: boolean } } | undefined) => {
+  return (r: { ok: boolean; error?: string; data?: { simulated?: boolean } | null } | undefined) => {
     if (!r) return; // redirected to Stripe
     if (r.ok) { toast.success(r.data?.simulated ? t.billing.simulated : t.common.saved); router.refresh(); }
     else toast.error((t.common.errors as Record<string, string>)[r.error ?? ""] ?? r.error ?? t.common.errors.unexpected);
@@ -86,5 +87,21 @@ function PlanRow({ plan }: { plan: Plan }) {
         if (r.ok) { toast.success(t.common.saved); router.refresh(); } else toast.error(t.common.errors.validation);
       })}><Save />{t.common.save}</Button>
     </div>
+  );
+}
+
+export function SpendCapForm({ capCents }: { capCents: number }) {
+  const t = useT();
+  const run = useRun();
+  const [value, setValue] = useState(String(Math.round(capCents / 100)));
+  const [pending, start] = useTransition();
+  return (
+    <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); start(async () => run(await setSpendCapAction(Number(value)))); }}>
+      <div className="space-y-1.5">
+        <Label htmlFor="cap">{t.billing.spendCapLabel}</Label>
+        <Input id="cap" type="number" min={0} max={100000} step={10} value={value} onChange={(e) => setValue(e.target.value)} className="w-36" />
+      </div>
+      <Button type="submit" variant="outline" disabled={pending}>{pending && <Loader2 className="animate-spin" />}{t.common.save}</Button>
+    </form>
   );
 }

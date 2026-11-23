@@ -6,6 +6,25 @@ import { getCurrentUser } from "@/server/auth";
 import { createAdminClient } from "@/server/supabase/admin";
 import { formatCurrency, formatNumber } from "@/i18n/format";
 import { LandingDemo, type DemoPlan } from "./landing-demo";
+import { USAGE_PLAN_KEY, billable } from "@/config/billing";
+
+/** Example customer prices per action: estimated provider cost (cents) × (1 + markup). */
+function examplePrices() {
+  const p = (lo: number, hi?: number) => {
+    const a = billable(lo) / 100;
+    const b = hi != null ? billable(hi) / 100 : null;
+    const f = (x: number) => x.toLocaleString("nl-NL", { style: "currency", currency: "EUR", minimumFractionDigits: 2 });
+    return b ? `${f(a)} – ${f(b)}` : f(a);
+  };
+  return [
+    ["Bedrijven zoeken (per 20 resultaten)", p(3.2)],
+    ["Bedrijf importeren", p(1.7)],
+    ["E-mailadres zoeken", p(3, 12)],
+    ["AI-onderzoek van een website", p(1, 2)],
+    ["Persoonlijke e-mail schrijven", p(3, 5)],
+    ["E-mail versturen", "gratis"],
+  ];
+}
 
 export const metadata = { title: "Leadwerk — vind bedrijven, vind hun e-mail, mail elk bedrijf persoonlijk" };
 
@@ -38,7 +57,11 @@ export default async function LandingPage() {
   const [user, plans] = await Promise.all([getCurrentUser(), publicPlans()]);
   const highlight = plans[Math.min(1, plans.length - 1)]?.key;
   const planHref = (key: string) => (user ? `/billing?plan=${key}` : `/signup?plan=${key}`);
-  const demoPlans: DemoPlan[] = plans.map((p) => ({ key: p.key, name: p.name, price: formatCurrency(p.price_cents, "nl"), description: p.description ?? "", highlight: p.key === highlight, href: planHref(p.key) }));
+  const usage = plans.find((p) => p.key === USAGE_PLAN_KEY);
+  const demoPlans: DemoPlan[] = (usage ? [usage] : plans).map((p) => ({
+    key: p.key, name: p.name, price: formatCurrency(p.price_cents, "nl"), suffix: p.key === USAGE_PLAN_KEY ? "eenmalig, daarna op verbruik" : "/maand",
+    description: p.description ?? "", highlight: true, href: planHref(p.key),
+  }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -80,7 +103,7 @@ export default async function LandingPage() {
             <Button size="lg" asChild><a href="#prijzen">Kies je abonnement <ArrowRight /></a></Button>
             <Button size="lg" variant="outline" asChild><a href="#demo">Bekijk hoe het werkt</a></Button>
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">Vanaf {formatCurrency(plans[0]?.price_cents ?? 4900, "nl")} per maand · maandelijks opzegbaar · gemaakt voor Nederland</p>
+          <p className="mt-4 text-xs text-muted-foreground">{usage ? `${formatCurrency(usage.price_cents, "nl")} eenmalig · daarna alleen wat je gebruikt · gemaakt voor Nederland` : `Vanaf ${formatCurrency(plans[0]?.price_cents ?? 4900, "nl")} per maand · maandelijks opzegbaar`}</p>
         </div>
       </section>
 
@@ -108,6 +131,38 @@ export default async function LandingPage() {
       </section>
 
       {/* pricing */}
+      {usage ? (
+        <section id="prijzen" className="mx-auto max-w-5xl scroll-mt-24 px-6 py-24">
+          <div className="text-center">
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Eén keer starten, daarna betaal je wat je gebruikt</h2>
+            <p className="mt-3 text-muted-foreground">Geen vast pakket waar je te veel of te weinig in zit. Rustige maand? Dan betaal je weinig.</p>
+          </div>
+          <div className="mt-12 grid gap-5 md:grid-cols-[1fr_1.15fr]">
+            <div className="flex flex-col rounded-2xl border border-primary bg-background p-7 shadow-[0_20px_50px_-20px_rgba(37,99,235,0.35)] ring-1 ring-primary">
+              <p className="text-lg font-semibold">{usage.name}</p>
+              <p className="mt-5 text-5xl font-semibold tracking-tight">{formatCurrency(usage.price_cents, "nl")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">eenmalig starttarief, daarna maandelijks je verbruik</p>
+              <ul className="mt-6 flex-1 space-y-2.5 text-sm">
+                {["Alle functies, geen limiet op gebruikers", "Zoeken in heel Nederland, 97 branches", "E-mailadressen zoeken met bronvermelding", "Persoonlijke AI-e-mails per bedrijf", "Versturen vanaf je eigen mailbox", "Maandplafond dat je zelf instelt"].map((x) => (
+                  <li key={x} className="flex gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />{x}</li>
+                ))}
+              </ul>
+              <Button className="mt-7" size="lg" asChild><Link href={planHref(usage.key)}>Nu starten <ArrowRight /></Link></Button>
+            </div>
+            <div className="rounded-2xl border bg-background p-7">
+              <p className="text-lg font-semibold">Wat kost gebruik?</p>
+              <p className="mt-1 text-sm text-muted-foreground">Indicatie per actie. Je ziet je verbruik altijd live in je account en betaalt maandelijks achteraf.</p>
+              <div className="mt-5 divide-y rounded-xl border text-sm">
+                {examplePrices().map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-4 px-4 py-2.5"><span>{k}</span><span className="tabular font-medium">{v}</span></div>
+                ))}
+              </div>
+              <p className="mt-4 text-xs text-muted-foreground">Voorbeeld: 100 bedrijven zoeken, importeren, adres vinden en een persoonlijke e-mail sturen kost ongeveer {formatCurrency(billable(100 * 12) , "nl")}. Prijzen excl. btw.</p>
+            </div>
+          </div>
+          <p className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="size-4" />Veilig betalen via Stripe · maandplafond in eigen hand · maandelijks opzegbaar</p>
+        </section>
+      ) : (
       <section id="prijzen" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-24">
         <div className="text-center">
           <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Eén nieuwe klant betaalt je abonnement terug</h2>
@@ -140,6 +195,8 @@ export default async function LandingPage() {
         <p className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="size-4" />Veilig betalen · prijzen excl. btw · je zit nergens aan vast</p>
       </section>
 
+      )}
+
       {/* faq */}
       <section id="vragen" className="scroll-mt-24 border-t bg-secondary/40">
         <div className="mx-auto max-w-3xl px-6 py-20">
@@ -150,6 +207,7 @@ export default async function LandingPage() {
               ["Hoe komen jullie aan de e-mailadressen?", "We lezen de website van het bedrijf, vragen Hunter en zoeken op internet. Elk adres krijgt zijn bron; wat we niet kunnen controleren, nemen we niet over."],
               ["Is elke e-mail echt anders?", "Ja. De AI leest per bedrijf de website en verwijst naar concrete dingen die daar staan. Jij keurt elke e-mail goed voordat hij de deur uitgaat."],
               ["Mag dit wel, zakelijk mailen?", "Zakelijke e-mail aan bedrijven is onder voorwaarden toegestaan. De software helpt met een verzendcontrole, afmeldlink en suppressielijst. Twijfel je over jouw situatie? Vraag juridisch advies."],
+              ["Hoe werkt de prijs?", "Je betaalt één keer het starttarief. Daarna betaal je elke maand achteraf alleen voor wat je hebt gebruikt: zoeken, adressen vinden, onderzoek en e-mails schrijven. Je stelt zelf een maandplafond in."],
               ["Kan ik opzeggen?", "Ja, maandelijks. Je zit nergens aan vast."],
             ].map(([q, a]) => (
               <details key={q} className="px-5 py-4">

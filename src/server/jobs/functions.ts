@@ -21,12 +21,14 @@ const CONFIG: FnConfig[] = [
   { id: "campaigns-tick", cron: "* * * * *", retries: 1, concurrency: [{ limit: 1 }] },
   { id: "inbox-sync", cron: "*/5 * * * *", retries: 1, concurrency: [{ limit: 1 }] },
   { id: "retention-purge", cron: "17 3 * * *", retries: 2, concurrency: [{ limit: 1 }] },
+  { id: "billing-usage", cron: "13 2 * * *", retries: 2, concurrency: [{ limit: 1 }] },
 ];
 
 const CRON_EVENT: Record<string, JobName> = {
   "campaigns-tick": "campaigns/tick",
   "inbox-sync": "inbox/sync",
   "retention-purge": "retention/purge",
+  "billing-usage": "billing/report-usage",
 };
 
 export const functions = CONFIG.flatMap((cfg) => {

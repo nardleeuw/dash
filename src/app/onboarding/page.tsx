@@ -9,7 +9,7 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
   const user = await requireUser();
   const t = await getDictionary();
   const { new: isNew, plan } = await searchParams;
-  const chosen = typeof plan === "string" && ["starter", "growth", "pro"].includes(plan) ? plan : undefined;
+  const chosen = typeof plan === "string" && ["usage", "starter", "growth", "pro"].includes(plan) ? plan : undefined;
   const supabase = await createClient();
   const { count } = await supabase.from("organization_members").select("id", { count: "exact", head: true }).eq("user_id", user.id);
   if ((count ?? 0) > 0 && !isNew) redirect(chosen ? `/billing?plan=${chosen}` : "/overview");

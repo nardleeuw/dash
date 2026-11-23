@@ -18,6 +18,31 @@ export class PaymentRequiredError extends CreditsExhaustedError {
   }
 }
 
+/** Raised when a usage-billed workspace reached its monthly spending cap. */
+export class SpendCapReachedError extends CreditsExhaustedError {
+  constructor(kind: UsageKind) {
+    super(kind);
+    this.name = "SpendCapReachedError";
+  }
+}
+
+/** Start of the current calendar month (UTC) — the usage billing period. */
+export function monthStart(now = new Date()) {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+}
+
+/** Billable usage of a workspace this month and its cap (usage plan only; null otherwise). */
+export async function monthlySpend(orgId: string): Promise<{ costCents: number; billableCents: number; capCents: number } | null> {
+  const { USAGE_PLAN_KEY, billable, billingConfig } = await import("@/config/billing");
+  const admin = createAdminClient();
+  const { data: sub } = await admin.from("subscriptions").select("plan_key, limit_overrides").eq("org_id", orgId).maybeSingle();
+  if (sub?.plan_key !== USAGE_PLAN_KEY) return null;
+  const { data: cost } = await admin.rpc("usage_cost_cents", { p_org: orgId, p_from: monthStart() });
+  const costCents = Number(cost ?? 0);
+  const cap = Number((sub.limit_overrides as { spend_cap_cents?: number } | null)?.spend_cap_cents ?? billingConfig().defaultSpendCapCents);
+  return { costCents, billableCents: billable(costCents), capCents: cap };
+}
+
 /** Paywall switch (Vercel env REQUIRE_PAID_PLAN=1): only paying workspaces can use paid features. */
 export function paywallEnabled() {
   return process.env.REQUIRE_PAID_PLAN === "1";
@@ -52,6 +77,8 @@ export async function consumeCredits(params: {
   userId?: string | null;
 }) {
   if (paywallEnabled() && !(await hasPaidAccess(params.orgId))) throw new PaymentRequiredError(params.kind);
+  const spend = await monthlySpend(params.orgId);
+  if (spend && spend.capCents > 0 && spend.billableCents >= spend.capCents) throw new SpendCapReachedError(params.kind);
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("consume_credits", {
     p_org: params.orgId,

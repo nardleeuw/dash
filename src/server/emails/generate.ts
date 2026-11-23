@@ -89,7 +89,7 @@ export async function generateEmailById(orgId: string, emailId: string) {
     await consumeCredits({ orgId, kind: "email_generation", idempotencyKey: `gen:${emailId}:v${email.version}`, referenceType: "generated_email", referenceId: emailId });
   } catch (err) {
     if (err instanceof CreditsExhaustedError) {
-      await setStatus("failed", { error: err.name === "PaymentRequiredError" ? "payment_required" : "credits_exhausted" });
+      await setStatus("failed", { error: err.name === "PaymentRequiredError" ? "payment_required" : err.name === "SpendCapReachedError" ? "spend_cap" : "credits_exhausted" });
       return { status: "failed" };
     }
     throw err;

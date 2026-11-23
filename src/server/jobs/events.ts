@@ -8,6 +8,7 @@ export type JobEvents = {
   "emails/generate.requested": { orgId: string; emailId: string };
   "contacts/bulk.requested": { orgId: string; userId: string | null; businessIds: string[] };
   "emails/resume": Record<string, never>;
+  "billing/report-usage": Record<string, never>;
   "campaigns/tick": Record<string, never>;
   "inbox/sync": Record<string, never>;
   "retention/purge": Record<string, never>;

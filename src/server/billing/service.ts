@@ -3,6 +3,8 @@ import type Stripe from "stripe";
 import { createAdminClient } from "@/server/supabase/admin";
 import { env } from "@/server/env";
 import { stripe } from "./stripe";
+import { USAGE_PLAN_KEY, billable, billingConfig } from "@/config/billing";
+import { monthStart } from "@/server/usage";
 
 async function ensureCustomer(orgId: string, email: string) {
   const admin = createAdminClient();
@@ -19,10 +21,15 @@ export async function createSubscriptionCheckout(orgId: string, email: string, p
   const { data: plan } = await admin.from("plans").select("key, stripe_price_id, is_active").eq("key", planKey).single();
   if (!plan?.stripe_price_id || !plan.is_active) throw new Error("plan_not_available");
   const customer = await ensureCustomer(orgId, email);
+  const usage = plan.key === USAGE_PLAN_KEY;
+  const { data: full } = await admin.from("plans").select("price_cents").eq("key", planKey).single();
   const session = await stripe().checkout.sessions.create({
     mode: "subscription",
     customer,
-    line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
+    // Usage plan: metered monthly price + the one-time start fee on the first invoice.
+    line_items: usage
+      ? [{ price: plan.stripe_price_id }, { price_data: { currency: "eur", unit_amount: full?.price_cents ?? billingConfig().setupFeeCents, product_data: { name: "Leadwerk starttarief (eenmalig)" } }, quantity: 1 }]
+      : [{ price: plan.stripe_price_id, quantity: 1 }],
     success_url: `${env().APP_URL}/billing?checkout=success`,
     cancel_url: `${env().APP_URL}/billing?checkout=cancelled`,
     client_reference_id: orgId,
@@ -121,6 +128,10 @@ async function processEvent(event: Stripe.Event) {
       if (s.mode === "subscription" && s.subscription) {
         const sub = await (await import("./stripe")).stripe().subscriptions.retrieve(typeof s.subscription === "string" ? s.subscription : s.subscription.id);
         await applySubscription({ ...sub, metadata: { ...sub.metadata, orgId } });
+        if (s.metadata?.planKey === USAGE_PLAN_KEY) {
+          const now = new Date().toISOString();
+          await admin.from("subscriptions").update({ setup_paid_at: now, usage_reported_until: now }).eq("org_id", orgId).is("setup_paid_at", null);
+        }
       }
       break;
     }
@@ -142,8 +153,9 @@ async function processEvent(event: Stripe.Event) {
 /** Platform admin: create Stripe products/prices for plans and packs without a price id (or with a changed amount). */
 export async function syncPlansToStripe() {
   const admin = createAdminClient();
-  const { data: plans } = await admin.from("plans").select("*").eq("is_active", true).gt("price_cents", 0);
+  const { data: plans } = await admin.from("plans").select("*").eq("is_active", true).gt("price_cents", 0).neq("key", USAGE_PLAN_KEY);
   const results: string[] = [];
+  if (await ensureUsagePrice()) results.push(USAGE_PLAN_KEY);
   for (const p of plans ?? []) {
     let needsPrice = !p.stripe_price_id;
     if (p.stripe_price_id) {
@@ -157,4 +169,69 @@ export async function syncPlansToStripe() {
     results.push(p.key);
   }
   return results;
+}
+
+/**
+ * Usage plan: a Stripe Billing Meter (sum of cents) and a metered monthly
+ * price of €0.01 per unit. Returns true when something was created.
+ */
+export async function ensureUsagePrice() {
+  const admin = createAdminClient();
+  const { data: plan } = await admin.from("plans").select("stripe_price_id").eq("key", USAGE_PLAN_KEY).maybeSingle();
+  if (!plan) return false;
+  if (plan.stripe_price_id) {
+    const existing = await stripe().prices.retrieve(plan.stripe_price_id).catch(() => null);
+    if (existing?.active && existing.recurring?.usage_type === "metered") return false;
+  }
+  const eventName = billingConfig().meterEventName;
+  const meters = await stripe().billing.meters.list({ status: "active", limit: 100 });
+  const meter = meters.data.find((m) => m.event_name === eventName) ?? (await stripe().billing.meters.create({
+    display_name: "Leadwerk verbruik (cent)",
+    event_name: eventName,
+    default_aggregation: { formula: "sum" },
+    customer_mapping: { type: "by_id", event_payload_key: "stripe_customer_id" },
+    value_settings: { event_payload_key: "value" },
+  }));
+  const product = await stripe().products.create({ name: "Leadwerk verbruik", metadata: { planKey: USAGE_PLAN_KEY } });
+  const price = await stripe().prices.create({
+    product: product.id, currency: "eur", unit_amount: 1,
+    recurring: { interval: "month", usage_type: "metered", meter: meter.id },
+    metadata: { planKey: USAGE_PLAN_KEY },
+  });
+  await admin.from("plans").update({ stripe_price_id: price.id }).eq("key", USAGE_PLAN_KEY);
+  return true;
+}
+
+/**
+ * Daily: report each usage-billed workspace's billable usage (provider cost ×
+ * (1 + markup)) since the last report to Stripe as meter events. Stripe adds
+ * it to the monthly invoice. Idempotent per period via the event identifier.
+ */
+export async function reportUsageToStripe(now = new Date()) {
+  const admin = createAdminClient();
+  const { data: subs } = await admin
+    .from("subscriptions")
+    .select("org_id, stripe_customer_id, usage_reported_until, setup_paid_at, status")
+    .eq("plan_key", USAGE_PLAN_KEY)
+    .in("status", ["active", "past_due"])
+    .not("stripe_customer_id", "is", null);
+  const { meterEventName } = billingConfig();
+  let reported = 0;
+  for (const s of subs ?? []) {
+    const from = s.usage_reported_until ?? s.setup_paid_at ?? monthStart(now);
+    const to = now.toISOString();
+    const { data: cost } = await admin.rpc("usage_cost_cents", { p_org: s.org_id, p_from: from, p_to: to });
+    const cents = billable(Number(cost ?? 0));
+    if (cents > 0) {
+      await stripe().billing.meterEvents.create({
+        event_name: meterEventName,
+        payload: { stripe_customer_id: s.stripe_customer_id!, value: String(cents) },
+        identifier: `${s.org_id}:${to}`,
+        timestamp: Math.floor(now.getTime() / 1000),
+      });
+      reported++;
+    }
+    await admin.from("subscriptions").update({ usage_reported_until: to }).eq("org_id", s.org_id);
+  }
+  return { reported };
 }

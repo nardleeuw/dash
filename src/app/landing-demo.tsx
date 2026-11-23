@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export type DemoPlan = { key: string; name: string; price: string; description: string; highlight: boolean; href: string };
+export type DemoPlan = { key: string; name: string; price: string; suffix: string; description: string; highlight: boolean; href: string };
 
 const STEPS = [
   { key: "find", icon: Search, title: "Bedrijven vinden", action: "Importeer 312 bedrijven" },
@@ -179,18 +179,18 @@ export function LandingDemo({ plans }: { plans: DemoPlan[] }) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 id="paywall-title" className="text-xl font-semibold tracking-tight">Klaar om dit voor jouw agency te doen?</h3>
-                <p className="mt-1 text-sm text-muted-foreground">Kies een abonnement en je zoekt vandaag nog je eerste bedrijven. Maandelijks opzegbaar.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Start vandaag nog met je eerste bedrijven. Daarna betaal je alleen voor wat je gebruikt.</p>
               </div>
               <button type="button" onClick={() => setPaywall(false)} aria-label="Sluiten" className="rounded-md p-1 text-muted-foreground hover:bg-accent"><X className="size-5" /></button>
             </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className={cn("mt-5 grid gap-3", plans.length === 1 ? "mx-auto max-w-sm" : "sm:grid-cols-3")}>
               {plans.map((p) => (
                 <div key={p.key} className={cn("flex flex-col rounded-xl border p-4", p.highlight && "border-primary ring-1 ring-primary")}>
                   <p className="font-semibold">{p.name}</p>
-                  <p className="mt-1 text-2xl font-semibold tracking-tight">{p.price}<span className="text-sm font-normal text-muted-foreground"> /maand</span></p>
+                  <p className="mt-1 text-2xl font-semibold tracking-tight">{p.price}<span className="text-sm font-normal text-muted-foreground"> {p.suffix}</span></p>
                   <p className="mt-1 flex-1 text-xs text-muted-foreground">{p.description}</p>
                   <Button className="mt-4" variant={p.highlight ? "default" : "outline"} asChild>
-                    <Link href={p.href}>Kies {p.name} <ArrowRight /></Link>
+                    <Link href={p.href}>{plans.length === 1 ? "Nu starten" : `Kies ${p.name}`} <ArrowRight /></Link>
                   </Button>
                 </div>
               ))}

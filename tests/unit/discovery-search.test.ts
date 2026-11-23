@@ -65,3 +65,12 @@ describe("Google place mapping", () => {
     expect(m).toMatchObject({ name: "Café Test", address: { city: "'s-Hertogenbosch", postalCode: null } });
   });
 });
+
+describe("billing config", () => {
+  it("applies the markup to provider cost", async () => {
+    const { billable } = await import("@/config/billing");
+    expect(billable(100, 100)).toBe(200);
+    expect(billable(100, 80)).toBe(180);
+    expect(billable(333, 80)).toBe(599);
+  });
+});

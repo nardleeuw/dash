@@ -241,7 +241,7 @@ export async function runDiscovery(orgId: string, userId: string, q: SearchReque
     if (s.status === "fulfilled") pages.push(s.value);
     else {
       const err = s.reason;
-      if (err?.name === "CreditsExhaustedError" || err?.name === "PaymentRequiredError") throw err;
+      if (["CreditsExhaustedError", "PaymentRequiredError", "SpendCapReachedError"].includes(err?.name)) throw err;
       console.error("[discovery]", providers[i], err);
       const kind = err instanceof ProviderError ? `provider_error_${err.status ?? "network"}` : `provider_error:${String(err?.name ?? "Error").slice(0, 40)}${err?.code ? ":" + String(err.code).slice(0, 20) : ""}`;
       errors.push({ provider: providers[i], message: kind });

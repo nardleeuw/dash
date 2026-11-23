@@ -35,7 +35,7 @@ export async function findContactsAction(businessId: unknown): Promise<ActionRes
       revalidatePath(`/leads/${id}`);
       return ok({ added: res.added, total: res.total, bySource: res.bySource });
     } catch (err) {
-      if (err instanceof CreditsExhaustedError) return fail(err.name === "PaymentRequiredError" ? "payment_required" : "credits");
+      if (err instanceof CreditsExhaustedError) return fail(err.name === "PaymentRequiredError" ? "payment_required" : err.name === "SpendCapReachedError" ? "spend_cap" : "credits");
       throw err;
     }
   });
@@ -52,7 +52,7 @@ export async function verifyEmailAction(contactId: unknown, businessId: unknown)
       revalidatePath(`/leads/${b}`);
       return ok({ status: res.status! });
     } catch (err) {
-      if (err instanceof CreditsExhaustedError) return fail(err.name === "PaymentRequiredError" ? "payment_required" : "credits");
+      if (err instanceof CreditsExhaustedError) return fail(err.name === "PaymentRequiredError" ? "payment_required" : err.name === "SpendCapReachedError" ? "spend_cap" : "credits");
       throw err;
     }
   });

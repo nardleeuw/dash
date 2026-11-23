@@ -8,7 +8,7 @@ export const metadata = { title: "Sign up" };
 export default async function SignupPage({ searchParams }: PageProps<"/signup">) {
   const t = await getDictionary();
   const { next, plan } = await searchParams;
-  const chosen = typeof plan === "string" && ["starter", "growth", "pro"].includes(plan) ? plan : null;
+  const chosen = typeof plan === "string" && ["usage", "starter", "growth", "pro"].includes(plan) ? plan : null;
   return (
     <div>
       <h1 className="text-2xl font-semibold tracking-tight">{t.auth.signupTitle}</h1>

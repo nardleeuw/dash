@@ -77,3 +77,16 @@ Then in the Supabase dashboard:
 - [ ] Inngest functions synced (or Supabase pg_cron jobs scheduled)
 - [ ] Auth emails delivered via your SMTP
 - [ ] Backups / PITR enabled on Supabase
+
+## Pricing model (usage-based)
+
+* Plan `usage` ("Op verbruik"): one-time start fee = the plan's `price_cents`
+  (default €500), then a monthly invoice for actual provider cost × (1 + markup).
+* Env vars (Vercel): `BILLING_MARKUP_PERCENT` (default 100),
+  `BILLING_DEFAULT_CAP_CENTS` (default 25000 = €250 monthly cap),
+  `STRIPE_METER_EVENT` (default `leadwerk_usage_cents`),
+  `REQUIRE_PAID_PLAN=1` to switch the paywall on.
+* With Stripe keys set, *Platformbeheer → Synchroniseren met Stripe* creates
+  the Billing Meter and the metered €0.01 price for the usage plan. Checkout
+  charges the start fee and stores the card; a daily job
+  (`/api/cron/billing-usage`) reports billable cents as meter events.

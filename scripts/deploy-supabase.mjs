@@ -95,6 +95,7 @@ if (appUrl && cronSecret) {
     ["leadwerk-campaigns-tick", "*/5 * * * *", "campaigns-tick"],
     ["leadwerk-inbox-sync", "*/10 * * * *", "inbox-sync"],
     ["leadwerk-emails-resume", "*/5 * * * *", "emails-resume"],
+    ["leadwerk-billing-usage", "13 2 * * *", "billing-usage"],
     ["leadwerk-retention-purge", "17 3 * * *", "retention-purge"],
   ];
   for (const [name, schedule, job] of jobs) {

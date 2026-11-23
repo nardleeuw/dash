@@ -33,6 +33,7 @@ export async function safeAction<T>(fn: () => Promise<ActionResult<T>>): Promise
     if (err instanceof ForbiddenError) return fail("forbidden");
     if (err instanceof Error && err.name === "RateLimitedError") return fail("rate_limited");
     if (err instanceof Error && err.name === "PaymentRequiredError") return fail("payment_required");
+    if (err instanceof Error && err.name === "SpendCapReachedError") return fail("spend_cap");
     // Next.js redirect()/notFound() must propagate.
     if (err && typeof err === "object" && "digest" in err && typeof (err as { digest: unknown }).digest === "string" &&
         ((err as { digest: string }).digest.startsWith("NEXT_REDIRECT") || (err as { digest: string }).digest.startsWith("NEXT_HTTP_ERROR"))) {

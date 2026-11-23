@@ -42,7 +42,7 @@ export async function searchAction(filters: unknown, cursors: unknown): Promise<
       }
       return ok({ pages: res.pages, errors: res.errors, existing });
     } catch (err) {
-      if (err instanceof CreditsExhaustedError) return fail(err.name === "PaymentRequiredError" ? "payment_required" : "credits");
+      if (err instanceof CreditsExhaustedError) return fail(err.name === "PaymentRequiredError" ? "payment_required" : err.name === "SpendCapReachedError" ? "spend_cap" : "credits");
       throw err;
     }
   });
@@ -81,7 +81,7 @@ export async function importAction(groups: unknown, listId: unknown): Promise<Ac
       revalidatePath("/leads");
       return ok({ outcomes });
     } catch (err) {
-      if (err instanceof CreditsExhaustedError) return fail(err.name === "PaymentRequiredError" ? "payment_required" : "credits");
+      if (err instanceof CreditsExhaustedError) return fail(err.name === "PaymentRequiredError" ? "payment_required" : err.name === "SpendCapReachedError" ? "spend_cap" : "credits");
       throw err;
     }
   });

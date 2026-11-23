@@ -32,7 +32,7 @@ export async function createWorkspaceAction(_prev: OnboardingState, formData: Fo
     return { error: "unexpected" };
   }
   (await cookies()).set(ACTIVE_ORG_COOKIE, String(orgId), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 365 });
-  const plan = z.enum(["starter", "growth", "pro"]).safeParse(formData.get("plan"));
+  const plan = z.enum(["usage", "starter", "growth", "pro"]).safeParse(formData.get("plan"));
   redirect(plan.success ? `/billing?plan=${plan.data}` : "/overview");
 }
 

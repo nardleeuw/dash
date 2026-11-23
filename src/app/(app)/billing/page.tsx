@@ -10,7 +10,30 @@ import { getDictionary } from "@/i18n/server";
 import { fmt, formatCurrency, formatDate, formatNumber } from "@/i18n/format";
 import { getCreditStatus } from "@/server/usage";
 import { stripeMode } from "@/server/billing/stripe";
-import { PlanButton, PackButton, PortalButton, PlanAdmin } from "./billing-client";
+import { PlanButton, PackButton, PortalButton, PlanAdmin, SpendCapForm } from "./billing-client";
+import { USAGE_PLAN_KEY, billable } from "@/config/billing";
+import { monthlySpend, monthStart } from "@/server/usage";
+
+type UsageRow = { provider: string; operation: string; calls: number; cost_micros: number };
+
+/** Customer-facing usage groups (what they did, not which vendor). */
+function groupUsage(rows: UsageRow[]) {
+  const key = (r: UsageRow) =>
+    r.provider === "google_places" ? (r.operation === "details" ? "import" : "search")
+    : r.provider === "hunter" || (r.provider === "openai" && r.operation === "contacts") ? "emails_found"
+    : r.provider === "openai" && r.operation === "email" ? "emails_written"
+    : r.provider === "openai" && ["research", "scoring"].includes(r.operation) ? "research"
+    : r.provider === "openai" && r.operation === "replies" ? "replies"
+    : r.provider === "kvk" ? "kvk" : "other";
+  const m = new Map<string, { key: string; calls: number; costMicros: number }>();
+  for (const r of rows) {
+    const g = m.get(key(r)) ?? { key: key(r), calls: 0, costMicros: 0 };
+    g.calls += Number(r.calls);
+    g.costMicros += Number(r.cost_micros);
+    m.set(g.key, g);
+  }
+  return [...m.values()].sort((a, b) => b.costMicros - a.costMicros);
+}
 
 export const metadata = { title: "Abonnement" };
 
@@ -24,6 +47,11 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
     supabase.from("credit_packs").select("*").eq("is_active", true),
     getCreditStatus(ws.org.id),
     supabase.rpc("seat_status", { p_org: ws.org.id }),
+  ]);
+  const usagePlan = sub?.plan_key === USAGE_PLAN_KEY;
+  const [spend, { data: breakdown }] = await Promise.all([
+    monthlySpend(ws.org.id),
+    usagePlan ? supabase.rpc("usage_breakdown", { p_org: ws.org.id, p_from: monthStart() }) : Promise.resolve({ data: [] }),
   ]);
   const b = t.billing;
   const locale = t.meta.dateLocale;
@@ -44,7 +72,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
             <CardContent className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <p className="text-base font-semibold">{fmt(b.checkoutTitle, { plan: chosen.name })}</p>
-                <p className="text-sm text-muted-foreground">{fmt(b.checkoutText, { price: formatCurrency(chosen.price_cents, locale) })}</p>
+                <p className="text-sm text-muted-foreground">{fmt(chosen.key === USAGE_PLAN_KEY ? b.checkoutUsageText : b.checkoutText, { price: formatCurrency(chosen.price_cents, locale) })}</p>
               </div>
               {isOwner && <PlanButton planKey={chosen.key} label={b.checkoutCta} />}
             </CardContent>
@@ -55,6 +83,41 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
         {mode !== "live" && <Alert variant="warning"><FlaskConical /><AlertDescription className="text-foreground">{b.demoMode}</AlertDescription></Alert>}
         {sp.checkout === "success" && <Alert variant="success"><CheckCircle2 /><AlertDescription className="text-foreground">{b.checkoutSuccess}</AlertDescription></Alert>}
         {trialExpired && <Alert variant="destructive"><AlertTriangle /><AlertDescription className="text-foreground">{b.trialExpired}</AlertDescription></Alert>}
+
+        {usagePlan && spend ? (
+          <Card>
+            <CardHeader>
+              <CardDescription>{b.usageThisMonth}</CardDescription>
+              <CardTitle className="text-3xl tracking-tight">{formatCurrency(spend.billableCents, locale)}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="flex justify-between text-sm"><span>{b.spendCap}</span><span className="tabular text-muted-foreground">{formatCurrency(spend.billableCents, locale)} / {formatCurrency(spend.capCents, locale)}</span></div>
+                <Progress value={spend.capCents ? Math.min(100, (spend.billableCents / spend.capCents) * 100) : 0} className="mt-1.5" />
+              </div>
+              <div className="divide-y rounded-lg border text-sm">
+                {groupUsage((breakdown ?? []) as UsageRow[]).map((g) => (
+                  <div key={g.key} className="flex justify-between px-3 py-2"><span>{(b.usageGroups as Record<string, string>)[g.key] ?? g.key} <span className="text-muted-foreground">· {formatNumber(g.calls, locale)}×</span></span><span className="tabular">{formatCurrency(billable(Math.round(g.costMicros / 10_000)), locale)}</span></div>
+                ))}
+                {(breakdown ?? []).length === 0 && <p className="px-3 py-2 text-muted-foreground">{b.noUsage}</p>}
+              </div>
+              <p className="text-xs text-muted-foreground">{b.usageNote}</p>
+              {isOwner && <SpendCapForm capCents={spend.capCents} />}
+            </CardContent>
+          </Card>
+        ) : (
+          (plans ?? []).some((p) => p.key === USAGE_PLAN_KEY && p.is_public) && (
+            <Card className="border-primary ring-1 ring-primary">
+              <CardContent className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-base font-semibold">{b.startTitle}</p>
+                  <p className="text-sm text-muted-foreground">{fmt(b.checkoutUsageText, { price: formatCurrency((plans ?? []).find((p) => p.key === USAGE_PLAN_KEY)?.price_cents ?? 50000, locale) })}</p>
+                </div>
+                {isOwner && <div className="w-56"><PlanButton planKey={USAGE_PLAN_KEY} label={b.checkoutCta} /></div>}
+              </CardContent>
+            </Card>
+          )
+        )}
 
         <div className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
           <Card>
@@ -85,10 +148,11 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
           </Card>
         </div>
 
+        {(plans ?? []).some((p) => p.is_public && p.is_active && p.key !== USAGE_PLAN_KEY) && (
         <section>
           <h2 className="mb-3 text-base font-semibold">{b.plans}</h2>
           <div className="grid gap-4 md:grid-cols-3">
-            {(plans ?? []).filter((p) => p.is_public && p.is_active).map((p) => (
+            {(plans ?? []).filter((p) => p.is_public && p.is_active && p.key !== USAGE_PLAN_KEY).map((p) => (
               <Card key={p.key} className={p.key === sub?.plan_key ? "border-primary ring-1 ring-primary" : undefined}>
                 <CardHeader>
                   <CardTitle>{p.name}</CardTitle>
@@ -107,7 +171,9 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
             ))}
           </div>
         </section>
+        )}
 
+        {!usagePlan && (
         <section>
           <h2 className="mb-3 text-base font-semibold">{b.packs}</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -122,6 +188,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
             ))}
           </div>
         </section>
+        )}
 
         {ws.isPlatformAdmin && <PlanAdmin plans={(plans ?? []) as never} stripeLive={mode === "live"} />}
       </div>

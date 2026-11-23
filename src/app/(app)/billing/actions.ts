@@ -24,7 +24,10 @@ export async function choosePlanAction(planKey: unknown): Promise<ActionResult<{
   // Demo mode: simulate the subscription change.
   const admin = createAdminClient();
   const now = new Date();
-  await admin.from("subscriptions").update({ plan_key: key, status: "active", trial_ends_at: null, current_period_start: now.toISOString(), current_period_end: new Date(now.getTime() + 30 * 86_400_000).toISOString() }).eq("org_id", ws.org.id);
+  await admin.from("subscriptions").update({
+    plan_key: key, status: "active", trial_ends_at: null, current_period_start: now.toISOString(), current_period_end: new Date(now.getTime() + 30 * 86_400_000).toISOString(),
+    ...(key === "usage" ? { setup_paid_at: now.toISOString(), usage_reported_until: now.toISOString() } : {}),
+  }).eq("org_id", ws.org.id);
   revalidatePath("/billing");
   return ok({ simulated: true });
 }
@@ -82,5 +85,18 @@ export async function syncStripeAction(): Promise<ActionResult<{ plans: string[]
     const plans = await syncPlansToStripe();
     revalidatePath("/billing");
     return ok({ plans });
+  });
+}
+
+/** Owner: set the monthly spending cap (euros; 0 = no cap). */
+export async function setSpendCapAction(euros: unknown): Promise<ActionResult<null>> {
+  return safeAction(async () => {
+    const ws = await requireRole("owner");
+    const cap = z.number().int().min(0).max(100_000).parse(euros);
+    const admin = createAdminClient();
+    const { data: sub } = await admin.from("subscriptions").select("limit_overrides").eq("org_id", ws.org.id).single();
+    await admin.from("subscriptions").update({ limit_overrides: { ...((sub?.limit_overrides as object) ?? {}), spend_cap_cents: cap * 100 } }).eq("org_id", ws.org.id);
+    revalidatePath("/billing");
+    return ok(null);
   });
 }
