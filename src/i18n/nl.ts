@@ -504,6 +504,7 @@ export const nl = {
       senderName: "Naam afzender",
       senderTitle: "Functie afzender",
       signature: "Ondertekening",
+      signatureHint: "Wordt automatisch precies één keer onder elke e-mail gezet, inclusief groet (bijv. \"Met vriendelijke groet,\" + naam). Je hoeft hier in je instructies niet om te vragen. Leeg = groet + naam afzender + bedrijfsnaam.",
     },
   },
   campaigns: {

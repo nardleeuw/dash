@@ -505,6 +505,7 @@ export const en: Dictionary = {
       senderName: "Sender name",
       senderTitle: "Sender title",
       signature: "Signature",
+      signatureHint: "Added automatically, exactly once, under every email, including the greeting (e.g. \"Kind regards,\" + name). No need to ask for it in your instructions. Empty = greeting + sender name + company name.",
     },
   },
   campaigns: {

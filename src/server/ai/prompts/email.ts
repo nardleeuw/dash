@@ -2,7 +2,7 @@ import { z } from "zod";
 import { UNTRUSTED_DATA_RULES, wrapUntrusted } from "@/server/ai/sanitize";
 import type { AgencyProfile } from "@/server/agency";
 
-export const EMAIL_PROMPT_VERSION = "email-v4";
+export const EMAIL_PROMPT_VERSION = "email-v5";
 
 export const emailSchema = z.object({
   subject: z.string(),
@@ -46,12 +46,13 @@ STYLE:
 - Plain text only. No markdown, no emojis, no bullet lists unless natural, no links except the agency website if provided.
 - ${level === "subtle" ? "Open naturally and professionally (no \"I hope this finds you well\"); the single company reference may be in the first or second sentence." : "Open with something specific to THIS company (not \"I hope this finds you well\")."}
 - Connect exactly one concrete opportunity to the agency's relevant service.
+- Write as the sender in the AGENCY profile: when the sender introduces themselves, use sender_name, sender_title and the agency name exactly as given. Describe the offer only with the profile's description, services, products and usp, aimed at its ideal customer profile. Never invent services, features, prices or results the profile does not mention.
 - CALL TO ACTION: end with exactly ONE short, low-friction question that is easy to answer with "yes" (interest-based, not a meeting demand). Good: offering to send a short example or a quick idea for their situation, or asking whether this is relevant for them right now. Not allowed: proposing specific dates/times, "let me know if you have any questions", multiple questions, calendar links (unless the agency CTA contains one), pressure or urgency.
 - If the ADDITIONAL INSTRUCTIONS FROM THE USER specify the subject line, the ending or a closing line (for example a line with the agency website link after the question), follow them exactly; they take precedence over the call-to-action rule above. Links must be copied exactly as given.
 - The agency's preferred call to action — phrase it as such a question: ${agency.call_to_action || (nl ? "aanbieden om een kort voorbeeld te sturen van hoe dit er voor hun bedrijf uit zou zien" : "offer to send a short example of how this would look for their business")}.
 - Never use these words or phrases: ${agency.avoid_phrases.length ? agency.avoid_phrases.join("; ") : "(none specified)"}.
 - Do NOT add an unsubscribe line or legal footer — it is added automatically.
-- Sign off with the signature provided (or the sender name).
+- Do NOT write a closing greeting, the sender's name or a signature. The sender's closing and signature from the profile are added automatically, exactly once, after your last line. Your body ends with the call to action (or with the closing line the user asked for). If the additional instructions ask for a signature or greeting, do not write one: it is already taken care of.
 - Subject: short (max ~8 words), specific, no clickbait, no ALL CAPS, no "Re:" or "Fwd:".
 - "alt_subject"/"alt_body": a genuinely different second version (different angle or opening), same rules.
 - "personalization_score": your honest 0–100 rating of how specific to this company the email is (for SUBTLE, around 40–60 is right).`;
@@ -76,7 +77,7 @@ export function emailUserPrompt(input: {
 ${JSON.stringify({
   name: a.agency_name, website: a.website, description: a.description, services: a.services, products: a.products,
   usp: a.unique_selling_proposition, ideal_customer_profile: a.ideal_customer_profile, sender_name: a.sender_name,
-  sender_title: a.sender_title, signature: a.signature,
+  sender_title: a.sender_title,
 })}
 
 ${a.example_emails.length ? `EXAMPLES OF THE AGENCY'S PAST SUCCESSFUL EMAILS (style reference only, do not copy facts):\n${a.example_emails.slice(0, 3).map((e, i) => `--- example ${i + 1}\n${e.slice(0, 1500)}`).join("\n")}\n` : ""}

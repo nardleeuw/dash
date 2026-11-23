@@ -141,7 +141,7 @@ export function ProfileForm({ profile, industries, canEdit }: { profile: Profile
             {text("sender_name", f.senderName)}
             {text("sender_title", f.senderTitle)}
           </div>
-          {text("signature", f.signature, true)}
+          {text("signature", f.signature, true, f.signatureHint)}
           {canEdit && (
             <Button onClick={save} disabled={pending}>{pending && <Loader2 className="animate-spin" />}{t.common.save}</Button>
           )}
