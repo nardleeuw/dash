@@ -5,9 +5,9 @@ import type { z } from "zod";
 import { env } from "@/server/env";
 import { providerMode } from "@/server/providers/mode";
 import { logApiUsage } from "@/server/usage";
-import { OPENAI_PRICE_PER_MTOK } from "@/config/costs";
+import { OPENAI_PRICE_PER_MTOK, WEB_SEARCH_CALL_MICROS } from "@/config/costs";
 
-export type AiTask = "research" | "scoring" | "email" | "replies";
+export type AiTask = "research" | "scoring" | "email" | "replies" | "contacts";
 
 export class AiUnavailableError extends Error {
   constructor(public reason: "quota" | "invalid_key" | "disabled" | "invalid_output" | "error", message?: string) {
@@ -24,7 +24,7 @@ function openai() {
 
 export function modelFor(task: AiTask) {
   const e = env();
-  return { research: e.OPENAI_MODEL_RESEARCH, scoring: e.OPENAI_MODEL_SCORING, email: e.OPENAI_MODEL_EMAIL, replies: e.OPENAI_MODEL_REPLIES }[task];
+  return { research: e.OPENAI_MODEL_RESEARCH, scoring: e.OPENAI_MODEL_SCORING, email: e.OPENAI_MODEL_EMAIL, replies: e.OPENAI_MODEL_REPLIES, contacts: e.OPENAI_MODEL_RESEARCH }[task];
 }
 
 export function estimateCostMicros(model: string, input: number, output: number) {
@@ -48,6 +48,8 @@ export async function structured<S extends z.ZodType>(params: {
   schemaName: string;
   mock: () => z.infer<S>;
   maxOutputTokens?: number;
+  /** Let the model use OpenAI's hosted web search (results biased to the Netherlands). */
+  webSearch?: boolean;
 }): Promise<StructuredResult<z.infer<S>>> {
   const mode = providerMode("openai");
   if (mode === "disabled") throw new AiUnavailableError("disabled");
@@ -69,12 +71,14 @@ export async function structured<S extends z.ZodType>(params: {
       ],
       text: { format: zodTextFormat(params.schema, params.schemaName) },
       max_output_tokens: params.maxOutputTokens ?? 4000,
+      ...(params.webSearch ? { tools: [{ type: "web_search" as const, user_location: { type: "approximate" as const, country: "NL" } }] } : {}),
     });
+    const searches = params.webSearch ? res.output.filter((o) => o.type === "web_search_call").length : 0;
     const input = res.usage?.input_tokens ?? 0;
     const output = res.usage?.output_tokens ?? 0;
     void logApiUsage({
       orgId: params.orgId, provider: "openai", operation: params.task, inputTokens: input, outputTokens: output,
-      costMicros: estimateCostMicros(model, input, output), latencyMs: Date.now() - started,
+      costMicros: estimateCostMicros(model, input, output) + searches * WEB_SEARCH_CALL_MICROS, latencyMs: Date.now() - started,
     });
     if (!res.output_parsed) throw new AiUnavailableError("invalid_output", "model returned no parseable output");
     return { data: params.schema.parse(res.output_parsed), model: res.model ?? model, isMock: false, inputTokens: input, outputTokens: output };

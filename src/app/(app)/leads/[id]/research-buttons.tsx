@@ -11,7 +11,7 @@ import { findContactsAction, startResearchAction, verifyEmailAction } from "@/ap
 function useErr() {
   const t = useT();
   return (code: string) => {
-    const map: Record<string, string> = { ...(t.common.errors as Record<string, string>), no_domain: t.research.noDomain, not_configured: t.research.notConfigured };
+    const map: Record<string, string> = { ...(t.common.errors as Record<string, string>), no_domain: t.research.noDomain, not_configured: t.research.notConfigured, no_sources: t.research.noSources };
     toast.error(map[code] ?? t.common.errors.unexpected);
   };
 }
@@ -39,7 +39,7 @@ export function FindContactsButton({ businessId }: { businessId: string }) {
   return (
     <Button variant="outline" size="sm" disabled={pending} onClick={() => start(async () => {
       const r = await findContactsAction(businessId);
-      if (r.ok) { toast.success(fmt(t.research.contactsFound, r.data)); router.refresh(); } else err(r.error);
+      if (r.ok) { toast.success(fmt(t.research.contactsFound, { added: r.data.added, total: r.data.total }), { description: fmt(t.research.contactsBySource, r.data.bySource) }); router.refresh(); } else err(r.error);
     })}>
       {pending ? <Loader2 className="animate-spin" /> : <Search />}{t.research.findContacts}
     </Button>

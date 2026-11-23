@@ -24,8 +24,12 @@ export type HunterEmail = {
 export type HunterDomainSearch = { domain: string; organization: string | null; pattern: string | null; accept_all: boolean; webmail: boolean; disposable: boolean; emails: HunterEmail[] };
 export type HunterVerification = { email: string; status: "valid" | "invalid" | "accept_all" | "webmail" | "disposable" | "unknown"; result?: string; score: number | null };
 
+export type HunterFinderResult = { email: string | null; score: number | null; position: string | null; first_name: string | null; last_name: string | null; verification?: { date: string | null; status: string | null } };
+
 export interface HunterApi {
   domainSearch(domain: string, orgId?: string, limit?: number): Promise<HunterDomainSearch | null>;
+  /** Most likely address of a named person at a domain (pattern + sources), with a 0–100 score. */
+  emailFinder(domain: string, fullName: string, orgId?: string): Promise<HunterFinderResult | null>;
   verify(email: string, orgId?: string): Promise<HunterVerification | null>;
 }
 
@@ -47,6 +51,10 @@ export class HunterClient implements HunterApi {
 
   verify(email: string, orgId?: string) {
     return this.get<HunterVerification>(`/email-verifier?email=${encodeURIComponent(email)}`, "emailVerifier", orgId);
+  }
+
+  emailFinder(domain: string, fullName: string, orgId?: string) {
+    return this.get<HunterFinderResult>(`/email-finder?domain=${encodeURIComponent(domain)}&full_name=${encodeURIComponent(fullName)}`, "emailFinder", orgId);
   }
 }
 

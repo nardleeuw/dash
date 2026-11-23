@@ -1,4 +1,4 @@
-import type { HunterApi, HunterDomainSearch, HunterVerification } from "./client";
+import type { HunterApi, HunterDomainSearch, HunterFinderResult, HunterVerification } from "./client";
 
 /** Demo data for development without a Hunter key. Never returns real people. */
 export class MockHunter implements HunterApi {
@@ -11,6 +11,12 @@ export class MockHunter implements HunterApi {
         { value: `demo.eigenaar@${domain}`, type: "personal", confidence: 70, first_name: "Demo", last_name: "Eigenaar", position: "Eigenaar", department: "executive", sources: src },
       ],
     };
+  }
+
+  async emailFinder(domain: string, fullName: string): Promise<HunterFinderResult> {
+    const [first, ...rest] = fullName.trim().split(/\s+/);
+    const local = first.toLowerCase().replace(/[^a-z]/g, "");
+    return { email: local ? `${local}@${domain}` : null, score: 75, position: null, first_name: first ?? null, last_name: rest.join(" ") || null, verification: { date: null, status: "accept_all" } };
   }
 
   async verify(email: string): Promise<HunterVerification> {

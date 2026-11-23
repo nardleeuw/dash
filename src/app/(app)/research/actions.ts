@@ -6,7 +6,8 @@ import { requireRole } from "@/server/auth";
 import { createClient } from "@/server/supabase/server";
 import { fail, ok, safeAction, type ActionResult } from "@/server/actions";
 import { requestResearch, rescoreOrganization } from "@/server/research/run";
-import { findContactsWithHunter, verifyContactEmail } from "@/server/research/contacts";
+import { verifyContactEmail } from "@/server/research/contacts";
+import { findBusinessEmails, type ContactSourceKey } from "@/server/contacts/finder";
 import { CreditsExhaustedError } from "@/server/usage";
 import { DEFAULT_WEIGHTS } from "@/server/scoring/score";
 import { rateLimit } from "@/server/rate-limit";
@@ -22,15 +23,16 @@ export async function startResearchAction(businessIds: unknown): Promise<ActionR
   });
 }
 
-export async function findContactsAction(businessId: unknown): Promise<ActionResult<{ added: number; total: number }>> {
+export async function findContactsAction(businessId: unknown): Promise<ActionResult<{ added: number; total: number; bySource: Record<ContactSourceKey, number> }>> {
   return safeAction(async () => {
     const ws = await requireRole("sales_rep");
     const id = z.string().uuid().parse(businessId);
+    await rateLimit(`contacts:${ws.org.id}`, 30);
     try {
-      const res = await findContactsWithHunter(ws.org.id, ws.user.id, id);
-      if ("error" in res && res.error) return fail(res.error);
+      const res = await findBusinessEmails(ws.org.id, ws.user.id, id);
+      if ("error" in res) return fail(res.error === "not_found" ? "notFound" : res.error);
       revalidatePath(`/leads/${id}`);
-      return ok({ added: res.added ?? 0, total: res.total ?? 0 });
+      return ok({ added: res.added, total: res.total, bySource: res.bySource });
     } catch (err) {
       if (err instanceof CreditsExhaustedError) return fail("credits");
       throw err;

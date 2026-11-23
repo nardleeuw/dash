@@ -11,6 +11,9 @@ export const PROVIDER_COST_MICROS = {
   pagespeed: { run: 0 },
 } as const;
 
+/** OpenAI hosted web search: fee per search call in micro-euros (estimate — adjust). */
+export const WEB_SEARCH_CALL_MICROS = 9_500;
+
 /** OpenAI price per 1M tokens in micro-euros [input, output]. Estimates — adjust. */
 export const OPENAI_PRICE_PER_MTOK: Record<string, [number, number]> = {
   "gpt-5.5": [5_000_000, 30_000_000],

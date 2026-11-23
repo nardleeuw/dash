@@ -12,7 +12,11 @@ let userId: string;
 let businessId: string;
 
 beforeAll(async () => {
-  site = await startTestSite({ "/": { body: DENTIST_HOME }, "/contact": { body: DENTIST_CONTACT } });
+  site = await startTestSite({
+    "/": { body: DENTIST_HOME },
+    "/contact": { body: DENTIST_CONTACT },
+    "/team": { body: `<html><body><h1>Ons team</h1><p>Dr. Anna Jansen — praktijkhouder</p><p>Vragen? Mail de balie: balie [at] zonnehoek [dot] example</p></body></html>` },
+  });
   const user = await createTestUser("researcher");
   userId = user.id;
   orgId = await createOrgFor(user, `Research Org ${Date.now()}`);
@@ -66,16 +70,58 @@ describe("research run", () => {
     expect(again).toEqual({ queued: 0, skipped: 1 });
   });
 
-  it("adds Hunter contacts with sources (mock) and suppresses invalid addresses on verification", async () => {
-    const { findContactsWithHunter, verifyContactEmail } = await import("@/server/research/contacts");
+  it("finds addresses from website, Hunter, verified web search and Hunter Email Finder; checks MX", async () => {
+    const { findBusinessEmails } = await import("@/server/contacts/finder");
+    const { verifyContactEmail } = await import("@/server/research/contacts");
     await admin.from("businesses").update({ domain: "zonnehoek.example" }).eq("id", businessId);
-    const r = await findContactsWithHunter(orgId, userId, businessId);
-    expect(r).toMatchObject({ added: 2, total: 2 });
-    const { data: c } = await admin.from("contacts").select("id, email, email_type, recipient_category, contact_sources(provider, source_url)").eq("business_id", businessId).eq("email", "info@zonnehoek.example").single();
-    expect(c).toMatchObject({ email_type: "generic", recipient_category: "legal_entity_generic" });
-    expect((c!.contact_sources as { provider: string }[])[0].provider).toBe("mock");
-    const v = await verifyContactEmail(orgId, userId, c!.id);
+    const team = `${site.url}/team`;
+    const r = await findBusinessEmails(orgId, userId, businessId, {
+      webSearch: async () => ({
+        isMock: false,
+        findings: {
+          emails: [
+            { email: "balie@zonnehoek.example", source_url: team, quote: "Mail de balie: balie [at] zonnehoek [dot] example" },
+            { email: "verzonnen@zonnehoek.example", source_url: team, quote: "niet echt" }, // not on the page → rejected
+            { email: "info@webbureau.example", source_url: team, quote: "x" }, // other company → rejected
+          ],
+          people: [
+            { name: "Dr. Anna Jansen", role: "Praktijkhouder", source_url: team },
+            { name: "Piet Verzonnen", role: "Eigenaar", source_url: team }, // not on the page → rejected
+          ],
+        },
+      }),
+      acceptsMail: async (d) => d === "zonnehoek.example",
+    });
+    if ("error" in r) throw new Error(r.error);
+    // website: info@ (footer mailto) · Hunter mock: demo.eigenaar@ (+ info@ as extra source) · web: balie@ · finder: anna@
+    expect(r.bySource).toEqual({ website: 1, hunter: 1, web: 1, finder: 1 });
+    expect(r.added).toBe(4);
+    expect(r.notes).toContain("web_rejected:3");
+
+    const { data: rows } = await admin.from("contacts").select("email, email_type, recipient_category, full_name, job_title, contact_sources(provider, source_url, source_detail)").eq("business_id", businessId);
+    const by = Object.fromEntries((rows ?? []).map((c) => [c.email, c]));
+    expect(by["info@zonnehoek.example"]).toMatchObject({ email_type: "generic", recipient_category: "legal_entity_generic" });
+    expect((by["info@zonnehoek.example"].contact_sources as { provider: string }[]).map((x) => x.provider).sort()).toEqual(["mock", "website_crawl"]);
+    expect((by["balie@zonnehoek.example"].contact_sources as { provider: string; source_url: string }[])[0]).toMatchObject({ provider: "openai", source_url: team });
+    expect(by["anna@zonnehoek.example"]).toMatchObject({ full_name: "Anna Jansen", job_title: "Praktijkhouder", email_type: "personal", recipient_category: "legal_entity_personal" });
+    expect(by["verzonnen@zonnehoek.example"]).toBeUndefined();
+
+    // Running again adds nothing new (idempotent) and keeps sources unique.
+    const again = await findBusinessEmails(orgId, userId, businessId, { webSearch: async () => null, acceptsMail: async () => true });
+    if ("error" in again) throw new Error(again.error);
+    expect(again.added).toBe(0);
+
+    const v = await verifyContactEmail(orgId, userId, (await admin.from("contacts").select("id").eq("business_id", businessId).eq("email", "info@zonnehoek.example").single()).data!.id);
     expect(v).toEqual({ status: "accept_all" });
+  });
+
+  it("drops addresses whose domain cannot receive mail", async () => {
+    const { findBusinessEmails } = await import("@/server/contacts/finder");
+    const { data } = await admin.from("businesses").insert({ org_id: orgId, name: "Geen Mail BV", website_url: site.url, domain: "geenmail.example" }).select("id").single();
+    const r = await findBusinessEmails(orgId, userId, data!.id, { webSearch: async () => null, acceptsMail: async () => false });
+    if ("error" in r) throw new Error(r.error);
+    expect(r.total).toBe(0);
+    expect(r.notes.some((n) => n.startsWith("no_mx:"))).toBe(true);
   });
 
   it("re-scores when weights change", async () => {

@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { emailsFromMarkup, emailsFromText, visibleText } from "@/server/contacts/emails";
 
 /** Structured extraction of a single HTML page. Pure — unit tested. */
 export type PageExtract = {
@@ -65,14 +66,9 @@ export function extractPage(html: string, pageUrl: string): PageExtract {
     })
     .get();
 
-  $("script,style,noscript,svg,template").remove();
-  const text = $("body").text().replace(/\s+/g, " ").trim();
-  const emails = new Set<string>();
-  $('a[href^="mailto:"]').each((_, el) => {
-    const v = ($(el).attr("href") ?? "").replace(/^mailto:/i, "").split("?")[0].trim().toLowerCase();
-    if (/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(v)) emails.add(v);
-  });
-  for (const m of text.matchAll(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi)) emails.add(m[0].toLowerCase());
+  const markupEmails = emailsFromMarkup($);
+  const text = visibleText($);
+  const emails = new Set<string>([...markupEmails, ...emailsFromText(text)]);
   const phones = new Set<string>();
   $('a[href^="tel:"]').each((_, el) => {
     phones.add(($(el).attr("href") ?? "").replace(/^tel:/i, "").trim());
@@ -111,7 +107,15 @@ const PRIORITY: [RegExp, number][] = [
   [/(offerte|prijzen|tarieven|pricing|kosten)/i, 6],
 ];
 
-export function pickInternalPages(extract: PageExtract, origin: string, max = 4): string[] {
+/** Pages where businesses publish addresses and the people behind the company. */
+export const CONTACT_PRIORITY: [RegExp, number][] = [
+  [/(contact|bereikbaarheid)/i, 10],
+  [/(team|medewerkers|over-ons|over|about|wie-zijn-wij|organisatie|praktijk)/i, 9],
+  [/(colofon|impressum)/i, 8],
+  [/(privacy|disclaimer|algemene-voorwaarden|voorwaarden)/i, 6],
+];
+
+export function pickInternalPages(extract: PageExtract, origin: string, max = 4, priorities: [RegExp, number][] = PRIORITY): string[] {
   const candidates = new Map<string, number>();
   for (const l of extract.links) {
     let u: URL;
@@ -126,7 +130,7 @@ export function pickInternalPages(extract: PageExtract, origin: string, max = 4)
     const key = u.toString().replace(/\/$/, "");
     if (key === origin || key === extract.url.replace(/\/$/, "")) continue;
     const hay = `${u.pathname} ${l.text}`;
-    const score = PRIORITY.find(([re]) => re.test(hay))?.[1] ?? 0;
+    const score = priorities.find(([re]) => re.test(hay))?.[1] ?? 0;
     if (score > (candidates.get(key) ?? -1)) candidates.set(key, score);
   }
   return [...candidates.entries()].filter(([, s]) => s > 0).sort((a, b) => b[1] - a[1]).slice(0, max).map(([k]) => k);

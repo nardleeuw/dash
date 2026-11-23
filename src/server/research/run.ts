@@ -1,4 +1,5 @@
 import "server-only";
+import { acceptableForBusiness } from "@/server/contacts/emails";
 import { createHash } from "node:crypto";
 import { createAdminClient } from "@/server/supabase/admin";
 import { consumeCredits, CreditsExhaustedError } from "@/server/usage";
@@ -181,8 +182,7 @@ export async function runResearch({ orgId, userId, businessId, analysisId }: { o
     // Emails published on the company's own website.
     const known = new Set((contacts ?? []).map((c) => (c.email ?? "").toLowerCase()));
     for (const email of signals?.emails ?? []) {
-      const emailDomain = email.split("@")[1];
-      if (known.has(email) || (domain && emailDomain !== domain && !emailDomain.endsWith("." + domain))) continue;
+      if (known.has(email) || !acceptableForBusiness(email, domain, { publishedByBusiness: true })) continue;
       const type = classifyEmail(email);
       const { data: c } = await admin
         .from("contacts")
