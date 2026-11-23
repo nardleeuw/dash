@@ -9,6 +9,8 @@ const DEFINITE_MISS = new Set(["ENOTFOUND", "ENODATA", "NXDOMAIN"]);
  * a good address; only a definite "no such domain / no records" says no.
  */
 export async function domainAcceptsMail(domain: string, timeoutMs = 4_000): Promise<boolean> {
+  // Offline test runs only (the sandbox has no public DNS) — never honoured in production.
+  if (process.env.CONTACTS_SKIP_MX === "1" && process.env.APP_ENV !== "production") return true;
   const withTimeout = <T,>(p: Promise<T>) => Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(Object.assign(new Error("timeout"), { code: "ETIMEOUT" })), timeoutMs))]);
   try {
     if ((await withTimeout(dns.resolveMx(domain))).some((r) => r.exchange && r.exchange !== ".")) return true;

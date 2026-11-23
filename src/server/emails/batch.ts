@@ -18,7 +18,11 @@ export type CreateBatchInput = {
   language: "nl" | "en";
   instructions?: string | null;
   name?: string | null;
+  /** research: run AI website research first (default true); findEmails: look up addresses for businesses without one (default true). */
+  options?: BatchOptions;
 };
+
+export type BatchOptions = { research?: boolean; findEmails?: boolean };
 
 /**
  * Create a generation batch: one generated_emails row per business (unique per
@@ -33,6 +37,7 @@ export async function createBatch(input: CreateBatchInput) {
       org_id: input.orgId, agency_profile_id: input.agencyProfileId, client_id: input.clientId ?? null, name: input.name ?? null,
       source: input.source, source_ref: input.sourceRef ?? {}, mode: input.mode, language: input.language,
       instructions: input.instructions ?? null, created_by: input.userId, status: "queued",
+      options: { research: input.options?.research !== false, findEmails: input.options?.findEmails !== false },
     })
     .select("id")
     .single();
@@ -123,4 +128,40 @@ async function runPool<T>(items: T[], size: number, fn: (item: T) => Promise<voi
     while (i < items.length) await fn(items[i++]);
   });
   await Promise.all(workers);
+}
+
+/**
+ * Safety net for in-process generation (no Inngest): one serverless call may
+ * only run for a few minutes, so large batches can leave emails "queued" or
+ * stuck. Called from the 5-minute cron: picks up stale emails and continues
+ * within a time budget.
+ */
+export async function resumeStaleGeneration(budgetMs = 240_000) {
+  if (inngestEnabled()) return { resumed: 0 };
+  const admin = createAdminClient();
+  const started = Date.now();
+  const queuedBefore = new Date(Date.now() - 3 * 60_000).toISOString();
+  const stuckBefore = new Date(Date.now() - 12 * 60_000).toISOString();
+  const { data: rows } = await admin
+    .from("generated_emails")
+    .select("id, org_id, batch_id, generation_status, updated_at")
+    .or(`and(generation_status.eq.queued,updated_at.lt.${queuedBefore}),and(generation_status.in.(researching,generating),updated_at.lt.${stuckBefore})`)
+    .lt("attempts", 3)
+    .order("updated_at", { ascending: true })
+    .limit(30);
+  let resumed = 0;
+  const batches = new Map<string, string>();
+  await runPool(rows ?? [], 3, async (r) => {
+    if (Date.now() - started > budgetMs) return;
+    if (r.generation_status !== "queued") await admin.from("generated_emails").update({ generation_status: "queued" }).eq("id", r.id);
+    try {
+      await generateEmailById(r.org_id, r.id);
+      resumed++;
+    } catch (err) {
+      console.error("[emails] resume failed", r.id, (err as Error).message);
+    }
+    if (r.batch_id) batches.set(r.batch_id, r.org_id);
+  });
+  for (const [batchId, orgId] of batches) await finalizeBatch(orgId, batchId);
+  return { resumed };
 }

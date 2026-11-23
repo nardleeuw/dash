@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Globe, ListPlus, Loader2, ShieldAlert, Tag, Trash2 } from "lucide-react";
+import { AtSign, ChevronLeft, ChevronRight, Globe, ListPlus, Loader2, ShieldAlert, Tag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ export type LeadRow = {
   id: string; name: string; kvk_number: string | null; city: string | null; province: string | null; industry: string | null;
   website_url: string | null; phone: string | null; lead_status: string; lead_score: number | null; is_mock: boolean;
   kvk_non_mailing: boolean; location_count: number | null; legal_form: string | null; created_at: string;
+  email?: string | null; email_count?: number;
 };
 
 const RANK: Record<string, number> = { owner: 50, admin: 40, manager: 30, sales_rep: 20, viewer: 10 };
@@ -121,6 +122,7 @@ export function LeadsTable(props: {
               <TableHead>{t.discover.columns.business}</TableHead>
               <TableHead>{t.leads.city}</TableHead>
               <TableHead>{t.leads.industry}</TableHead>
+              <TableHead>{t.common.email}</TableHead>
               <TableHead>{t.common.website}</TableHead>
               <TableHead>{t.leads.status}</TableHead>
               <TableHead className="text-right">{t.leads.score}</TableHead>
@@ -159,6 +161,11 @@ export function LeadsTable(props: {
                   {r.province && <div className="text-xs text-muted-foreground">{r.province}</div>}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{r.industry ? props.industryLabels[r.industry] ?? r.industry : "—"}</TableCell>
+                <TableCell className="text-sm">
+                  {r.email ? (
+                    <span className="flex max-w-[220px] items-center gap-1.5 truncate"><AtSign className="size-3.5 shrink-0 text-muted-foreground" />{r.email}{(r.email_count ?? 0) > 1 && <span className="text-xs text-muted-foreground">+{(r.email_count ?? 1) - 1}</span>}</span>
+                  ) : <span className="text-xs text-muted-foreground">{t.leads.noEmailYet}</span>}
+                </TableCell>
                 <TableCell className="text-sm">
                   {r.website_url ? (
                     <a href={r.website_url} target="_blank" rel="noopener noreferrer nofollow" className="flex max-w-[180px] items-center gap-1.5 truncate text-primary hover:underline">

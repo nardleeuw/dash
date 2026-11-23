@@ -11,6 +11,7 @@ import { findBusinessEmails, type ContactSourceKey } from "@/server/contacts/fin
 import { CreditsExhaustedError } from "@/server/usage";
 import { DEFAULT_WEIGHTS } from "@/server/scoring/score";
 import { rateLimit } from "@/server/rate-limit";
+import { dispatch } from "@/server/jobs/dispatch";
 
 export async function startResearchAction(businessIds: unknown): Promise<ActionResult<{ queued: number; skipped: number }>> {
   return safeAction(async () => {
@@ -71,5 +72,21 @@ export async function saveScoringAction(input: unknown): Promise<ActionResult<nu
     after(() => rescoreOrganization(ws.org.id).catch((e) => console.error("[rescore]", e)));
     revalidatePath("/research");
     return ok(null);
+  });
+}
+
+const BULK_CONTACTS_MAX = 50;
+
+/** Look up email addresses for many businesses in the background (max 50 per call). */
+export async function findContactsBulkAction(businessIds: unknown): Promise<ActionResult<{ queued: number; capped: boolean }>> {
+  return safeAction(async () => {
+    const ws = await requireRole("sales_rep");
+    const ids = z.array(z.string().uuid()).min(1).max(1000).parse(businessIds);
+    await rateLimit(`contacts-bulk:${ws.org.id}`, 10);
+    const supabase = await createClient();
+    const { data: owned } = await supabase.from("businesses").select("id").eq("org_id", ws.org.id).in("id", ids.slice(0, BULK_CONTACTS_MAX));
+    const list = (owned ?? []).map((b) => b.id as string);
+    if (list.length) await dispatch("contacts/bulk.requested", { orgId: ws.org.id, userId: ws.user.id, businessIds: list });
+    return ok({ queued: list.length, capped: ids.length > BULK_CONTACTS_MAX });
   });
 }

@@ -42,6 +42,16 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
   ]);
 
   const rows = (data ?? []) as unknown as LeadRow[];
+  // Best known address per business (primary, then personal, then generic) and how many we have.
+  if (rows.length) {
+    const { data: contacts } = await supabase.from("contacts").select("business_id, email, email_type, is_primary").eq("org_id", ws.org.id).in("business_id", rows.map((r) => r.id)).not("email", "is", null);
+    const rank = (c: { is_primary: boolean; email_type: string }) => (c.is_primary ? 0 : c.email_type === "personal" ? 1 : c.email_type === "generic" ? 2 : 3);
+    for (const r of rows) {
+      const mine = (contacts ?? []).filter((c) => c.business_id === r.id).sort((a, b) => rank(a) - rank(b));
+      r.email = mine[0]?.email ?? null;
+      r.email_count = mine.length;
+    }
+  }
   const locale = t.meta.locale as "nl" | "en";
 
   if ((total ?? 0) === 0) {

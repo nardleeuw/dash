@@ -17,6 +17,7 @@ const CONFIG: FnConfig[] = [
   { id: "research-business", event: "research/business.requested", retries: 3, concurrency: [{ limit: 3, key: "event.data.orgId" }, { limit: 10 }] },
   { id: "emails-plan-batch", event: "emails/batch.created", retries: 3 },
   { id: "emails-generate", event: "emails/generate.requested", retries: 3, concurrency: [{ limit: 4, key: "event.data.orgId" }, { limit: 12 }] },
+  { id: "contacts-bulk", event: "contacts/bulk.requested", retries: 1, concurrency: [{ limit: 2, key: "event.data.orgId" }] },
   { id: "campaigns-tick", cron: "* * * * *", retries: 1, concurrency: [{ limit: 1 }] },
   { id: "inbox-sync", cron: "*/5 * * * *", retries: 1, concurrency: [{ limit: 1 }] },
   { id: "retention-purge", cron: "17 3 * * *", retries: 2, concurrency: [{ limit: 1 }] },

@@ -6,6 +6,7 @@ import { Loader2, Mail, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -42,6 +43,8 @@ export function GenerateDialog(props: {
   const [listId, setListId] = useState(props.lists?.[0]?.id ?? "");
   const [mode, setMode] = useState<"missing_only" | "regenerate_all">("missing_only");
   const [instructions, setInstructions] = useState("");
+  const [findEmails, setFindEmails] = useState(true);
+  const [research, setResearch] = useState(true);
   const [pending, start] = useTransition();
   const filter = Object.fromEntries([...sp.entries()].filter(([k]) => !["page", "sort", "tab"].includes(k)));
 
@@ -65,7 +68,7 @@ export function GenerateDialog(props: {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant={props.trigger === "bulk" ? "outline" : "default"}><Wand2 />{e.generate}</Button>
+        <Button size="sm"><Wand2 />{e.generate}</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -108,6 +111,16 @@ export function GenerateDialog(props: {
               </Select>
             </div>
           </div>
+          <div className="space-y-3 rounded-lg border p-3">
+            <label className="flex items-start justify-between gap-3">
+              <span><span className="block text-sm font-medium">{e.optFindEmails}</span><span className="block text-xs text-muted-foreground">{e.optFindEmailsHint}</span></span>
+              <Switch checked={findEmails} onCheckedChange={setFindEmails} />
+            </label>
+            <label className="flex items-start justify-between gap-3">
+              <span><span className="block text-sm font-medium">{e.optResearch}</span><span className="block text-xs text-muted-foreground">{e.optResearchHint}</span></span>
+              <Switch checked={research} onCheckedChange={setResearch} />
+            </label>
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="instr">{e.instructions}</Label>
             <Textarea id="instr" value={instructions} onChange={(x) => setInstructions(x.target.value)} placeholder={e.instructionsPlaceholder} rows={2} maxLength={800} />
@@ -122,7 +135,7 @@ export function GenerateDialog(props: {
           <Button
             disabled={pending || !profileId || !profile?.complete || (scope === "list" && !listId)}
             onClick={() => start(async () => {
-              const r = await createBatchAction({ scope, businessIds: props.ids, filter, listId: scope === "list" ? listId : undefined, agencyProfileId: profileId, mode, instructions: instructions || undefined });
+              const r = await createBatchAction({ scope, businessIds: props.ids, filter, listId: scope === "list" ? listId : undefined, agencyProfileId: profileId, mode, instructions: instructions || undefined, research, findEmails });
               if (r.ok) {
                 toast.success(fmt(e.started, { queued: r.data.queued, skipped: r.data.skipped }));
                 setOpen(false);

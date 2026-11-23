@@ -6,6 +6,8 @@ import { emailSchema, emailSystemPrompt, emailUserPrompt, EMAIL_PROMPT_VERSION }
 import { loadAgencyProfile, type AgencyProfile } from "@/server/agency";
 import { consumeCredits, CreditsExhaustedError } from "@/server/usage";
 import { runResearch } from "@/server/research/run";
+import { findBusinessEmails } from "@/server/contacts/finder";
+import type { BatchOptions } from "./batch";
 import { industryLabel } from "@/config/industries";
 import { factCheckEmail, personalizationScore } from "./fact-check";
 import { mockEmail } from "./mock-writer";
@@ -42,6 +44,19 @@ async function ensureResearch(orgId: string, businessId: string, hasWebsite: boo
   return done;
 }
 
+async function latestResearch(orgId: string, businessId: string) {
+  const { data } = await createAdminClient()
+    .from("website_analyses")
+    .select("id, status, research, signals, completed_at")
+    .eq("org_id", orgId)
+    .eq("business_id", businessId)
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
 export function chooseOpportunity(opps: Opp[], agency: AgencyProfile | null): Opp | null {
   const sorted = [...opps].sort((a, b) =>
     Number(b.is_verified) - Number(a.is_verified) ||
@@ -61,6 +76,15 @@ export async function generateEmailById(orgId: string, emailId: string) {
   const setStatus = (generation_status: string, extra: Record<string, unknown> = {}) =>
     admin.from("generated_emails").update({ generation_status, ...extra }).eq("id", emailId);
 
+  // Claim the email (queued → researching) so two workers never generate it twice.
+  const { data: claimed } = await admin
+    .from("generated_emails")
+    .update({ generation_status: "researching", attempts: (email.attempts ?? 0) + 1, error: null })
+    .eq("id", emailId)
+    .eq("generation_status", "queued")
+    .select("id");
+  if (!claimed?.length) return { status: "busy" };
+
   try {
     await consumeCredits({ orgId, kind: "email_generation", idempotencyKey: `gen:${emailId}:v${email.version}`, referenceType: "generated_email", referenceId: emailId });
   } catch (err) {
@@ -71,7 +95,23 @@ export async function generateEmailById(orgId: string, emailId: string) {
     throw err;
   }
 
-  await setStatus("researching", { attempts: (email.attempts ?? 0) + 1, error: null });
+  const { data: batchRow } = email.batch_id
+    ? await admin.from("email_generation_batches").select("options").eq("id", email.batch_id).maybeSingle()
+    : { data: null };
+  const options = (batchRow?.options ?? {}) as BatchOptions;
+
+  // Find an address first when the business has none (website → Hunter → verified web search).
+  if (options.findEmails !== false) {
+    const { count } = await admin.from("contacts").select("id", { count: "exact", head: true }).eq("business_id", email.business_id).not("email", "is", null);
+    if (!count) {
+      try {
+        await findBusinessEmails(orgId, null, email.business_id);
+      } catch (err) {
+        console.error("[emails] address lookup failed", email.business_id, (err as Error).message);
+      }
+    }
+  }
+
   const [{ data: b }, agency, { data: contacts }] = await Promise.all([
     admin.from("businesses").select("*").eq("id", email.business_id).single(),
     loadAgencyProfile(admin, orgId, email.agency_profile_id),
@@ -82,7 +122,8 @@ export async function generateEmailById(orgId: string, emailId: string) {
     return { status: "failed" };
   }
 
-  const analysis = await ensureResearch(orgId, b.id, !!b.website_url);
+  // AI research is optional per batch; without it we still use earlier research if present.
+  const analysis = options.research === false ? await latestResearch(orgId, b.id) : await ensureResearch(orgId, b.id, !!b.website_url);
   const research = (analysis?.research ?? {}) as { observations?: Obs[]; hypotheses?: { text: string }[]; summary?: string };
   const { data: oppRows } = await admin.from("opportunities").select("*").eq("business_id", b.id).eq("status", "open");
   const opportunity = chooseOpportunity((oppRows ?? []) as Opp[], agency);

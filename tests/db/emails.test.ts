@@ -6,6 +6,7 @@ process.env.MOCK_PROVIDERS = "kvk,google_places,osm,openai,hunter";
 process.env.APP_ENV = "development";
 process.env.RESEARCH_ALLOW_PRIVATE_HOSTS = "1";
 process.env.JOBS_DISABLED = "1";
+process.env.CONTACTS_SKIP_MX = "1";
 
 let site: { url: string; close: () => Promise<void> };
 let orgId: string;
@@ -97,5 +98,50 @@ describe("individual email generation", () => {
     await admin.from("suppression_records").insert({ org_id: orgId, email: e!.recipient_email, reason: "objection", source: "test" });
     res = await evaluateEmailCompliance(orgId, e!.id);
     expect(res!.eligible).toBe(false);
+  });
+});
+
+describe("one-step outreach: find addresses + optional AI research", () => {
+  it("looks up an address first and skips AI research when switched off", async () => {
+    const { createBatch } = await import("@/server/emails/batch");
+    const { generateEmailById } = await import("@/server/emails/generate");
+    const { data: b } = await admin.from("businesses").insert({ org_id: orgId, name: "Praktijk Zonder Adres", industry: "dental", website_url: site.url, domain: "127.0.0.1.nip.io" }).select("id").single();
+    const res = await createBatch({ orgId, userId, businessIds: [b!.id], agencyProfileId: profileId, source: "selection", mode: "missing_only", language: "nl", options: { research: false, findEmails: true } });
+    const { data: batch } = await admin.from("email_generation_batches").select("options").eq("id", res.batchId).single();
+    expect(batch!.options).toEqual({ research: false, findEmails: true });
+
+    const { data: row } = await admin.from("generated_emails").select("id").eq("batch_id", res.batchId).single();
+    expect(await generateEmailById(orgId, row!.id)).toMatchObject({ status: expect.stringMatching(/completed|needs_review|generated|ok/) });
+
+    const { data: contacts } = await admin.from("contacts").select("email").eq("business_id", b!.id);
+    expect((contacts ?? []).map((c) => c.email)).toContain("info@127.0.0.1.nip.io");
+    const { count: analyses } = await admin.from("website_analyses").select("id", { count: "exact", head: true }).eq("business_id", b!.id);
+    expect(analyses).toBe(0); // no AI research was run
+    const { data: email } = await admin.from("generated_emails").select("generation_status, recipient_email, subject").eq("id", row!.id).single();
+    expect(email).toMatchObject({ generation_status: "completed" });
+    expect(email!.recipient_email).toBeTruthy();
+  });
+
+  it("never generates the same email twice concurrently", async () => {
+    const { createBatch } = await import("@/server/emails/batch");
+    const { generateEmailById } = await import("@/server/emails/generate");
+    const { data: b } = await admin.from("businesses").insert({ org_id: orgId, name: "Dubbel Test", industry: "dental" }).select("id").single();
+    await admin.from("contacts").insert({ org_id: orgId, business_id: b!.id, email: `info@dubbel${Date.now()}.nl`, email_type: "generic", recipient_category: "legal_entity_generic", source: "manual" });
+    const res = await createBatch({ orgId, userId, businessIds: [b!.id], agencyProfileId: profileId, source: "selection", mode: "missing_only", language: "nl", options: { research: false } });
+    const { data: row } = await admin.from("generated_emails").select("id").eq("batch_id", res.batchId).single();
+    const [a, c] = await Promise.all([generateEmailById(orgId, row!.id), generateEmailById(orgId, row!.id)]);
+    expect([a.status, c.status]).toContain("busy");
+  });
+
+  it("resumes emails left queued by an interrupted run", async () => {
+    const { resumeStaleGeneration } = await import("@/server/emails/batch");
+    const { data: b } = await admin.from("businesses").insert({ org_id: orgId, name: "Blijven Hangen BV", industry: "dental" }).select("id").single();
+    await admin.from("contacts").insert({ org_id: orgId, business_id: b!.id, email: `info@hangen${Date.now()}.nl`, email_type: "generic", recipient_category: "legal_entity_generic", source: "manual" });
+    const old = new Date(Date.now() - 10 * 60_000).toISOString();
+    const { data: e } = await admin.from("generated_emails").insert({ org_id: orgId, business_id: b!.id, agency_profile_id: profileId, language: "nl", generation_status: "queued", updated_at: old }).select("id").single();
+    const r = await resumeStaleGeneration(60_000);
+    expect(r.resumed).toBeGreaterThanOrEqual(1);
+    const { data: done } = await admin.from("generated_emails").select("generation_status").eq("id", e!.id).single();
+    expect(done!.generation_status).toBe("completed");
   });
 });

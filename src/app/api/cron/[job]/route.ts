@@ -5,7 +5,7 @@ import { inngestEnabled } from "@/server/jobs/client";
 
 export const maxDuration = 300;
 
-const JOBS = { "campaigns-tick": "campaigns/tick", "inbox-sync": "inbox/sync", "retention-purge": "retention/purge" } as const;
+const JOBS = { "campaigns-tick": "campaigns/tick", "inbox-sync": "inbox/sync", "retention-purge": "retention/purge", "emails-resume": "emails/resume" } as const;
 
 /** Vercel Cron fallback when Inngest is not used. Requires Authorization: Bearer CRON_SECRET. */
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/cron/[job]">) {

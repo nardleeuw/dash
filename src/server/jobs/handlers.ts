@@ -25,6 +25,25 @@ export const handlers: HandlerMap = {
     return outcomes;
   },
   "retention/purge": async () => purgeExpiredData(),
+  "emails/resume": async () => (await import("@/server/emails/batch")).resumeStaleGeneration(),
+  "contacts/bulk.requested": async ({ orgId, userId, businessIds }) => {
+    const { findBusinessEmails } = await import("@/server/contacts/finder");
+    const queue = [...businessIds];
+    let found = 0;
+    const worker = async () => {
+      for (let id = queue.shift(); id; id = queue.shift()) {
+        try {
+          const r = await findBusinessEmails(orgId, userId, id);
+          if (!("error" in r)) found += r.added;
+        } catch (err) {
+          if ((err as Error).name === "CreditsExhaustedError") return;
+          console.error("[contacts] bulk lookup failed", id, (err as Error).message);
+        }
+      }
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    return { found };
+  },
   "research/business.requested": async (data) => (await import("@/server/research/run")).runResearch(data),
   "campaigns/tick": async () => (await import("@/server/sending/tick")).campaignTick(),
   "inbox/sync": async () => (await import("@/server/inbox/sync")).syncAllMailboxes(),

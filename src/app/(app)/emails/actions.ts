@@ -27,6 +27,8 @@ export async function createBatchAction(input: unknown): Promise<ActionResult<{ 
       agencyProfileId: uuid,
       mode: z.enum(["missing_only", "regenerate_all"]),
       instructions: z.string().trim().max(800).optional(),
+      research: z.boolean().optional(),
+      findEmails: z.boolean().optional(),
     }).parse(input);
     const supabase = await createClient();
     const { data: profile } = await supabase.from("agency_profiles").select("id, client_id, language, services").eq("id", p.agencyProfileId).eq("org_id", ws.org.id).maybeSingle();
@@ -46,6 +48,7 @@ export async function createBatchAction(input: unknown): Promise<ActionResult<{ 
       orgId: ws.org.id, userId: ws.user.id, businessIds: (owned ?? []).map((o) => o.id), agencyProfileId: profile.id, clientId: profile.client_id,
       source: p.scope, sourceRef: p.scope === "filter" ? { filter: p.filter } : p.scope === "list" ? { listId: p.listId } : {},
       mode: p.mode, language: profile.language as "nl" | "en", instructions: p.instructions || null,
+      options: { research: p.research !== false, findEmails: p.findEmails !== false },
     });
     revalidatePath("/emails");
     return ok(res);
