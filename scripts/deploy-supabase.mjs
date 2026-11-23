@@ -8,6 +8,7 @@
  *   SUPABASE_ORG_ID=...        (optional: defaults to your first organization)
  *   SUPABASE_REGION=eu-central-1
  *   APP_URL=https://your-app.vercel.app
+ *   PRINT_SECRETS=1            (optional: print the service-role key and DB password)
  *
  *   node scripts/deploy-supabase.mjs
  */
@@ -74,12 +75,48 @@ if (appUrl) {
   console.log(`Auth site URL set to ${appUrl}`);
 }
 
+// Background jobs: Supabase pg_cron calls the app's /api/cron/* routes via
+// pg_net. This works on every Vercel plan (Hobby only allows daily Vercel
+// crons). CRON_SECRET is kept in Supabase Vault, never in the job text.
+const cronSecret = process.env.CRON_SECRET;
+if (appUrl && cronSecret) {
+  if (!/^[A-Za-z0-9_\-+/=]{24,}$/.test(cronSecret)) throw new Error("CRON_SECRET must be a base64/base64url string of 24+ chars");
+  const origin = new URL(appUrl).origin;
+  const q = (query) => api("POST", `/projects/${ref}/database/query`, { query });
+  await q("create extension if not exists pg_cron; create extension if not exists pg_net with schema extensions;");
+  await q(`do $$ begin
+    if exists (select 1 from vault.secrets where name = 'leadwerk_cron_secret') then
+      perform vault.update_secret((select id from vault.secrets where name = 'leadwerk_cron_secret'), $s$${cronSecret}$s$);
+    else
+      perform vault.create_secret($s$${cronSecret}$s$, 'leadwerk_cron_secret');
+    end if;
+  end $$;`);
+  const jobs = [
+    ["leadwerk-campaigns-tick", "*/5 * * * *", "campaigns-tick"],
+    ["leadwerk-inbox-sync", "*/10 * * * *", "inbox-sync"],
+    ["leadwerk-retention-purge", "17 3 * * *", "retention-purge"],
+  ];
+  for (const [name, schedule, job] of jobs) {
+    await q(`select cron.schedule('${name}', '${schedule}', $job$
+      select net.http_get(
+        url := '${origin}/api/cron/${job}',
+        headers := jsonb_build_object('Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'leadwerk_cron_secret')),
+        timeout_milliseconds := 120000
+      );
+    $job$);`);
+    console.log(`Scheduled ${name} (${schedule}) → ${origin}/api/cron/${job}`);
+  }
+}
+
 const keys = await api("GET", `/projects/${ref}/api-keys`);
 const anon = keys.find((k) => k.name === "anon")?.api_key;
 const service = keys.find((k) => k.name === "service_role")?.api_key;
 console.log("\n# Add these to your Vercel environment (never commit them):");
 console.log(`NEXT_PUBLIC_SUPABASE_URL=https://${ref}.supabase.co`);
 console.log(`NEXT_PUBLIC_SUPABASE_ANON_KEY=${anon}`);
-console.log(`SUPABASE_SERVICE_ROLE_KEY=${service ? "<printed to stderr>" : "(not available)"}`);
-if (service) console.error(`SUPABASE_SERVICE_ROLE_KEY=${service}`);
-if (dbPassword) console.error(`# Database password (store in a password manager): ${dbPassword}`);
+// Secrets are only printed on request so they do not end up in CI or agent logs.
+const printSecrets = process.env.PRINT_SECRETS === "1";
+console.log(`SUPABASE_SERVICE_ROLE_KEY=${!service ? "(not available)" : printSecrets ? "<printed to stderr>" : "<hidden — rerun with PRINT_SECRETS=1 or copy it from the dashboard>"}`);
+if (service && printSecrets) console.error(`SUPABASE_SERVICE_ROLE_KEY=${service}`);
+if (dbPassword && printSecrets) console.error(`# Database password (store in a password manager): ${dbPassword}`);
+if (dbPassword && !printSecrets) console.log("# Database password not shown; reset it in the dashboard (Project Settings → Database) if you need direct access.");

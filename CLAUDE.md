@@ -58,6 +58,18 @@ unsolicited advertising. The compliance gate treats this as a hard block.
 - `overpass-api.de` resets TLS connections from the sandbox; the OSM adapter is
   tested with fixtures here (set `OVERPASS_URL` to use another instance).
 
+## Hosted environments
+
+- Supabase project `mwmjpebqcipxlrfjhokn` (Frankfurt, eu-central-1), managed via
+  `scripts/deploy-supabase.mjs` (`SUPABASE_PROJECT_REF=mwmjpebqcipxlrfjhokn`).
+  Background jobs run as Supabase pg_cron → `/api/cron/*` (secret in Vault).
+- Vercel project `leadwerk` (team `nardleeuws-projects`, Hobby plan), linked to
+  GitHub `nardleeuw/dash`; pushes to `main` deploy to
+  https://leadwerk-app.vercel.app. Hobby only allows daily Vercel crons, so
+  `vercel.json` has none.
+- `APP_ENV=staging` until real OpenAI/Hunter/Google keys are set in Vercel;
+  switch to `production` then (disables all mock providers).
+
 ## Conventions
 
 - Code, comments and technical docs in English; UI copy in Dutch (default) and

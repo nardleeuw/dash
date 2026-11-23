@@ -39,8 +39,12 @@ Then in the Supabase dashboard:
    * **Inngest (recommended)**: install the Inngest Vercel integration; it sets
      `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY` and syncs `/api/inngest`.
      The cron route then skips automatically.
-   * **Vercel Cron**: `vercel.json` already schedules `/api/cron/*` (needs
-     `CRON_SECRET`; per-minute schedules require a paid Vercel plan).
+   * **Supabase pg_cron** (default, works on every Vercel plan): run
+     `scripts/deploy-supabase.mjs` with `APP_URL` and `CRON_SECRET` set. It
+     stores the secret in Supabase Vault and schedules `campaigns-tick`
+     (every 5 min), `inbox-sync` (every 10 min) and `retention-purge` (daily)
+     as pg_net calls to `/api/cron/*`. Use the same `CRON_SECRET` in Vercel.
+     Vercel Hobby only allows daily crons, so `vercel.json` has none.
 4. Deploy. `APP_ENV=production` disables every mock provider.
 
 ## 3. Stripe
@@ -70,6 +74,6 @@ Then in the Supabase dashboard:
 - [ ] Legal review of the compliance configuration and privacy notice
 - [ ] Sender identity + privacy footer set per workspace
 - [ ] Stripe webhook receiving events (test mode first)
-- [ ] Inngest functions synced (or Vercel Cron active)
+- [ ] Inngest functions synced (or Supabase pg_cron jobs scheduled)
 - [ ] Auth emails delivered via your SMTP
 - [ ] Backups / PITR enabled on Supabase
