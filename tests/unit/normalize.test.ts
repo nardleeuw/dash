@@ -39,3 +39,13 @@ describe("normalisation", () => {
     expect(classifyEmail("tandarts@praktijk.nl")).toBe("unknown");
   });
 });
+
+describe("cleanBusinessName", () => {
+  it("drops SEO keywords after a separator", async () => {
+    const { cleanBusinessName } = await import("@/server/discovery/normalize");
+    expect(cleanBusinessName("The AI Agency Nederland | AI Agency | ai agency")).toBe("The AI Agency Nederland");
+    expect(cleanBusinessName("Bakkerij Jansen • Brood & Banket")).toBe("Bakkerij Jansen");
+    expect(cleanBusinessName("Smit & Zonen B.V.")).toBe("Smit & Zonen B.V.");
+    expect(cleanBusinessName("A|B Studio")).toBe("A|B Studio");
+  });
+});

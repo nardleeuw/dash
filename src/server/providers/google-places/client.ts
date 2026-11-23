@@ -4,7 +4,7 @@ import { providerFetch } from "../http";
 import { PROVIDER_COST_MICROS } from "@/config/costs";
 import type { DiscoveredBusiness } from "../types";
 import { industryFromGoogleTypes } from "@/config/industries";
-import { normalizePhone, normalizePostalCode, normalizeUrl } from "@/server/discovery/normalize";
+import { normalizePhone, normalizePostalCode, normalizeUrl, cleanBusinessName } from "@/server/discovery/normalize";
 
 /** Google Places API (New) — https://developers.google.com/maps/documentation/places/web-service/overview */
 const BASE = "https://places.googleapis.com/v1";
@@ -92,7 +92,7 @@ export function mapPlace(p: GooglePlace, isMock = false): DiscoveredBusiness {
   return {
     provider: "google_places",
     externalId: p.id,
-    name: p.displayName?.text ?? "—",
+    name: p.displayName?.text ? cleanBusinessName(p.displayName.text) : "—",
     address: {
       street: component(p, "route"),
       houseNumber: component(p, "street_number"),

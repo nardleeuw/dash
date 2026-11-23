@@ -101,3 +101,16 @@ describe("glued text", () => {
     expect(extractEmailsFromHtml(html)).toEqual(["info@dental.nl"]);
   });
 });
+
+describe("glued labels", () => {
+  it("drops an 'E-mail' label printed against the address", async () => {
+    const { stripGluedLabel, emailsFromText } = await import("@/server/contacts/emails");
+    expect(stripGluedLabel("e-mailinfo@theaiagency.nl")).toBe("info@theaiagency.nl");
+    expect(stripGluedLabel("E-mail:hallo@studio.nl")).toBe("hallo@studio.nl");
+    expect(stripGluedLabel("mailcontact@bedrijf.nl")).toBe("contact@bedrijf.nl");
+    expect(stripGluedLabel("emailadresinfo@bedrijf.nl")).toBe("info@bedrijf.nl");
+    // Real addresses stay as they are.
+    for (const ok of ["mail@bedrijf.nl", "email@bedrijf.nl", "info@bedrijf.nl", "mailroom@bedrijf.nl", "contactpersoon@bedrijf.nl", "adrian@bedrijf.nl"]) expect(stripGluedLabel(ok)).toBe(ok);
+    expect(emailsFromText("Telefoon 030 123 E-mailinfo@ai-group.nl")).toEqual(["info@ai-group.nl"]);
+  });
+});

@@ -73,11 +73,29 @@ export function dropGluedPrefixes(emails: string[]): string[] {
   return emails.filter((e) => ![...set].some((o) => o !== e && e.endsWith(o) && /^[\d\s().+-]+$/.test(e.slice(0, e.length - o.length))));
 }
 
+const GLUED_LABEL = /^(e-?mail(adres)?|mail(adres)?|contact|adres)[:.]?(?=[a-z0-9])/i;
+const COMMON_LOCAL = /^(info|contact|hallo|hello|hi|hoi|sales|support|office|team|admin|administratie|kantoor|post|receptie|praktijk|welkom|vragen|service|klantenservice|offerte|planning|reserveringen?|boekingen?|mail|bestellingen|facturen|finance|hr|jobs|vacatures|marketing|studio|algemeen)([._-]|$)/i;
+
+/**
+ * "E-mail" printed right against the address on a page ("E-mailinfo@bedrijf.nl")
+ * becomes part of the match. Drop the label when it is clearly a label: a
+ * hyphenated "e-mail…" prefix, or a prefix followed by a common mailbox name.
+ */
+export function stripGluedLabel(email: string): string {
+  const [local, domain] = email.split("@");
+  const m = local.match(GLUED_LABEL);
+  if (!m || !domain) return email;
+  const rest = local.slice(m[0].length);
+  if (!rest) return email;
+  if (/^e-mail/i.test(m[0]) || COMMON_LOCAL.test(rest)) return `${rest}@${domain}`;
+  return email;
+}
+
 /** Addresses in visible text, including "[at]"/"(at)"/"[dot]" notations. */
 export function emailsFromText(text: string): string[] {
   const out = new Set<string>();
   for (const m of text.matchAll(TEXT_EMAIL_RE)) {
-    const e = normalizeEmail(m[0]);
+    const e = normalizeEmail(stripGluedLabel(m[0]));
     if (e) out.add(e);
   }
   for (const m of text.matchAll(OBFUSCATED_RE)) {

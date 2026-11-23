@@ -122,10 +122,24 @@ describe("sign-off", () => {
     expect(ensureSignOff(body, { signature: "Met vriendelijke groet,\nNard | Leadwerk", sender_name: "Nard", agency_name: "Leadwerk", language: "nl" }).endsWith("Met vriendelijke groet,\nNard | Leadwerk")).toBe(true);
   });
 
-  it("leaves emails that are already signed alone", async () => {
+  it("replaces the model's own short sign-off with the full closing", async () => {
     const { ensureSignOff } = await import("@/server/emails/signoff");
     const body = "Hoi,\n\nInteresse?\n\nMet vriendelijke groet,\nNard";
-    expect(ensureSignOff(body, { signature: null, sender_name: "Nard", agency_name: "Leadwerk", language: "nl" })).toBe(body);
+    expect(ensureSignOff(body, { signature: null, sender_name: "Nard", agency_name: "Leadwerk", language: "nl" })).toBe("Hoi,\n\nInteresse?\n\nMet vriendelijke groet,\nNard\nLeadwerk");
+  });
+
+  it("keeps exactly one signature, at the end, after the call to action", async () => {
+    const { ensureSignOff } = await import("@/server/emails/signoff");
+    const sig = "Met vriendelijke groet,\n\nNard Leeuwesteijn\nOprichter Leadwerk\n06 12 34 56 78\nleadwerk-app.vercel.app";
+    const sender = { signature: sig, sender_name: "Nard Leeuwesteijn", agency_name: "Leadwerk", language: "nl" as const };
+    const body = `Niels, ik zag dat Aigency AI-oplossingen bouwt.\n\nZo bereik je honderden bedrijven.\n\n${sig}\n\nSteek je nu wekelijks uren in acquisitie? Interesse?\nBenieuwd geworden? Bekijk alvast hoe het werkt: https://leadwerk-app.vercel.app\n\n${sig}`;
+    const out = ensureSignOff(body, sender);
+    expect(out.split("Oprichter Leadwerk").length - 1).toBe(1);
+    expect(out).toBe(`Niels, ik zag dat Aigency AI-oplossingen bouwt.\n\nZo bereik je honderden bedrijven.\n\nSteek je nu wekelijks uren in acquisitie? Interesse?\nBenieuwd geworden? Bekijk alvast hoe het werkt: https://leadwerk-app.vercel.app\n\n${sig}`);
+    // Already correct → unchanged.
+    expect(ensureSignOff(out, sender)).toBe(out);
+    // Model wrote a shorter closing of its own → replaced by the profile signature.
+    expect(ensureSignOff("Interesse?\n\nGroet,\nNard", sender)).toBe(`Interesse?\n\n${sig}`);
   });
 });
 

@@ -127,3 +127,13 @@ export function classifyEmail(email: string): "generic" | "personal" | "unknown"
   if (/^[a-z]+([.\-_][a-z]+)+$/.test(local)) return "personal";
   return "unknown";
 }
+
+/**
+ * Business names on Google sometimes carry SEO keywords after a separator:
+ * "The AI Agency Nederland | AI Agency | ai agency" → "The AI Agency Nederland".
+ */
+export function cleanBusinessName(raw: string): string {
+  const name = raw.replace(/\s+/g, " ").trim();
+  const first = name.split(/\s+[|•·]\s+/)[0]?.trim();
+  return first && first.length >= 2 ? first : name;
+}
