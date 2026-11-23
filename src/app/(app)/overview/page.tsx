@@ -10,6 +10,7 @@ import { createClient } from "@/server/supabase/server";
 import { getDictionary } from "@/i18n/server";
 import { fmt, formatCurrency, formatDate, formatNumber } from "@/i18n/format";
 import { monthlySpend, monthStart } from "@/server/usage";
+import { senderIdentityComplete } from "@/server/compliance/identity";
 
 export const metadata = { title: "Overzicht" };
 
@@ -50,7 +51,7 @@ export default async function OverviewPage() {
 
   const steps = [
     { done: ((profile?.services as unknown[]) ?? []).length > 0, label: o.steps.profile, href: "/settings?tab=sender" },
-    { done: Boolean(orgRow?.legal_name && orgRow?.postal_address), label: o.steps.company, href: "/settings?tab=organization" },
+    { done: senderIdentityComplete(orgRow), label: o.steps.company, href: "/settings?tab=organization" },
     { done: mailboxes > 0, label: o.steps.mailbox, href: "/integrations" },
     { done: businesses > 0, label: o.steps.leads, href: "/discover" },
     { done: emailsTotal > 0, label: o.steps.emails, href: "/leads" },

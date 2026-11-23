@@ -8,6 +8,7 @@ import { structured } from "@/server/ai/client";
 import { replyDraftSchema, replyDraftSystemPrompt } from "@/server/ai/prompts/reply";
 import { wrapUntrusted } from "@/server/ai/sanitize";
 import { loadAgencyProfile, loadOrgSettings } from "@/server/agency";
+import { senderIdentityComplete } from "@/server/compliance/identity";
 
 /** Send a reply written (and explicitly sent) by a user. Never automatic. */
 export async function sendConversationReply(orgId: string, userId: string, conversationId: string, body: string) {
@@ -19,12 +20,12 @@ export async function sendConversationReply(orgId: string, userId: string, conve
   const { data: account } = await admin.from("email_accounts").select("*").eq("id", conv.email_account_id).single<EmailAccountRow>();
   if (!account || account.status === "disconnected") return { error: "account_unavailable" as const };
   const { data: org } = await admin.from("organizations").select("legal_name, kvk_number, postal_address, privacy_policy_url, locale").eq("id", orgId).single();
-  if (!org?.legal_name || !org.kvk_number || !org.postal_address) return { error: "sender_identity" as const };
+  if (!org || !senderIdentityComplete(org)) return { error: "sender_identity" as const };
 
   const msg = composeMessage({
     orgId, appUrl: env().APP_URL, from: { name: account.display_name, email: account.email_address }, to: conv.participant_email,
     subject: (last?.subject ?? conv.subject ?? "").replace(/^re:\s*/i, ""), body,
-    identity: { legalName: org.legal_name, postalAddress: org.postal_address, kvkNumber: org.kvk_number, privacyUrl: org.privacy_policy_url, footerText: null, language: org.locale === "en" ? "en" : "nl" },
+    identity: { legalName: org.legal_name!, postalAddress: org.postal_address!, kvkNumber: null, privacyUrl: org.privacy_policy_url, footerText: null, language: org.locale === "en" ? "en" : "nl" },
     thread: last ? { inReplyTo: last.message_id_header, references: [...(last.references_headers ?? []), last.message_id_header].slice(-10) } : null,
   });
   const provider = await providerFor(admin, account);

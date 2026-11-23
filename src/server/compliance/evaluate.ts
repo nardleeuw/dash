@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/server/supabase/admin";
 import { checkEligibility, readComplianceSettings, type EligibilityResult, type Permission } from "./eligibility";
+import { senderIdentityComplete } from "./identity";
 
 export type SenderContext = { senderIdentityComplete: boolean; privacyNoticeConfigured: boolean; settings: ReturnType<typeof readComplianceSettings> };
 
@@ -11,8 +12,8 @@ export async function loadSenderContext(admin: SupabaseClient, orgId: string): P
     admin.from("privacy_notices").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_active", true),
   ]);
   return {
-    // KVK number is shown in the footer when present but not required to send.
-    senderIdentityComplete: Boolean(org?.legal_name && org?.postal_address),
+    // Legal name + full address (postcode and place); KVK is not required.
+    senderIdentityComplete: senderIdentityComplete(org),
     privacyNoticeConfigured: Boolean((notices ?? 0) > 0 || org?.privacy_policy_url),
     settings: readComplianceSettings(org?.settings as Record<string, unknown>),
   };

@@ -5,6 +5,7 @@ import { requireRole } from "@/server/auth";
 import { createClient } from "@/server/supabase/server";
 import { createAdminClient } from "@/server/supabase/admin";
 import { runDiscovery, type SearchResponse } from "@/server/discovery/search";
+import { extractDomain, isPlatformDomain } from "@/server/discovery/normalize";
 import { importGroup, type ImportOutcome } from "@/server/discovery/import";
 import { dispatch } from "@/server/jobs/dispatch";
 import { CreditsExhaustedError, getCreditStatus } from "@/server/usage";
@@ -13,7 +14,7 @@ import { getLocale } from "@/i18n/server";
 import { rateLimit } from "@/server/rate-limit";
 import { cursorsSchema, importGroupsSchema, searchFiltersSchema } from "@/lib/discovery-schema";
 
-export async function searchAction(filters: unknown, cursors: unknown): Promise<ActionResult<Omit<SearchResponse, "merged"> & { existing: Record<string, string> }>> {
+export async function searchAction(filters: unknown, cursors: unknown): Promise<ActionResult<Omit<SearchResponse, "merged"> & { existing: Record<string, string>; mailed: Record<string, string> }>> {
   return safeAction(async () => {
     const ws = await requireRole("sales_rep");
     await rateLimit(`search:${ws.org.id}`, 60);
@@ -40,7 +41,28 @@ export async function searchAction(filters: unknown, cursors: unknown): Promise<
         const { data } = await supabase.from("businesses").select("id, kvk_number").eq("org_id", ws.org.id).in("kvk_number", [...new Set(kvkNumbers)]);
         data?.forEach((r) => (existing[`kvk:${r.kvk_number}`] = r.id));
       }
-      return ok({ pages: res.pages, errors: res.errors, existing });
+      // Also recognise a business by its website domain (imported earlier via another source).
+      const domains = [...new Set(res.merged.map((m) => extractDomain(m.primary.website)).filter((d): d is string => Boolean(d) && !isPlatformDomain(d)))];
+      if (domains.length) {
+        const { data } = await supabase.from("businesses").select("id, domain").eq("org_id", ws.org.id).in("domain", domains);
+        data?.forEach((r) => (existing[`domain:${r.domain}`] = r.id));
+      }
+      // Businesses that were ever emailed: by business record, or by an address on their domain.
+      const mailed: Record<string, string> = {};
+      const businessIds = [...new Set(Object.values(existing))];
+      if (businessIds.length) {
+        const { data } = await supabase.from("outbound_messages").select("business_id, sent_at").eq("org_id", ws.org.id).eq("status", "sent").in("business_id", businessIds);
+        data?.forEach((r) => { if (r.business_id && r.sent_at && (!mailed[`biz:${r.business_id}`] || r.sent_at > mailed[`biz:${r.business_id}`])) mailed[`biz:${r.business_id}`] = r.sent_at; });
+      }
+      if (domains.length) {
+        const wanted = new Set(domains);
+        const { data } = await supabase.from("outbound_messages").select("to_email, sent_at").eq("org_id", ws.org.id).eq("status", "sent").order("sent_at", { ascending: false }).limit(20000);
+        data?.forEach((r) => {
+          const d = String(r.to_email).split("@")[1]?.toLowerCase();
+          if (d && wanted.has(d) && r.sent_at && !mailed[`domain:${d}`]) mailed[`domain:${d}`] = r.sent_at;
+        });
+      }
+      return ok({ pages: res.pages, errors: res.errors, existing, mailed });
     } catch (err) {
       if (err instanceof CreditsExhaustedError) return fail(err.name === "PaymentRequiredError" ? "payment_required" : err.name === "SpendCapReachedError" ? "spend_cap" : "credits");
       throw err;

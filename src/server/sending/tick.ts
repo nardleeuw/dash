@@ -9,6 +9,7 @@ import { composeMessage, type SenderIdentity } from "./compose";
 import { ensureSignOff } from "@/server/emails/signoff";
 import { followUpTime, isWithinWindow, nextWindowStart, type Window } from "./schedule";
 import { SendError } from "./providers/types";
+import { senderIdentityComplete } from "@/server/compliance/identity";
 
 type Recipient = { id: string; org_id: string; campaign_id: string; business_id: string; contact_id: string | null; email: string; generated_email_id: string; status: string; current_step: number };
 type Campaign = { id: string; org_id: string; status: string; email_account_id: string | null; agency_profile_id: string | null; follow_up_sequence_id: string | null; timezone: string; send_days: number[]; send_window_start: string; send_window_end: string; daily_limit: number };
@@ -29,8 +30,8 @@ async function senderIdentity(admin: SupabaseClient, orgId: string, language: "n
     admin.from("organizations").select("legal_name, kvk_number, postal_address, privacy_policy_url").eq("id", orgId).single(),
     admin.from("privacy_notices").select("email_footer, url").eq("org_id", orgId).eq("is_active", true).eq("language", language).order("version", { ascending: false }).limit(1).maybeSingle(),
   ]);
-  if (!org?.legal_name || !org.postal_address) return null;
-  return { legalName: org.legal_name, postalAddress: org.postal_address, kvkNumber: null, privacyUrl: notice?.url ?? org.privacy_policy_url, footerText: notice?.email_footer ?? null, language };
+  if (!org || !senderIdentityComplete(org)) return null;
+  return { legalName: org.legal_name!, postalAddress: org.postal_address!, kvkNumber: null, privacyUrl: notice?.url ?? org.privacy_policy_url, footerText: notice?.email_footer ?? null, language };
 }
 
 /** Messages stuck in "sending" have an unknown outcome: never resend automatically. */

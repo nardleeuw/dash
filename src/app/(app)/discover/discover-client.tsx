@@ -20,9 +20,9 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/app/page-header";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/client";
-import { fmt } from "@/i18n/format";
+import { fmt, formatDate } from "@/i18n/format";
 import { mergeSearchResults, type MergedResult } from "@/server/discovery/dedupe";
-import { formatPostalCode } from "@/server/discovery/normalize";
+import { extractDomain, formatPostalCode } from "@/server/discovery/normalize";
 import type { DiscoveredBusiness, DiscoveryProvider, LocationFilter } from "@/server/providers/types";
 import type { SearchFilters } from "@/lib/discovery-schema";
 import { deleteSavedSearchAction, importAction, peekEmailsAction, saveSearchAction, searchAction, touchSavedSearchAction } from "./actions";
@@ -62,6 +62,7 @@ export function DiscoverClient(props: {
   const [notices, setNotices] = useState<Partial<Record<DiscoveryProvider, string>>>({});
   const [errors, setErrors] = useState<{ provider: DiscoveryProvider; message: string }[]>([]);
   const [existing, setExisting] = useState<Record<string, string>>({});
+  const [mailed, setMailed] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [searched, setSearched] = useState(false);
   const [activeSaved, setActiveSaved] = useState<string | null>(null);
@@ -133,6 +134,7 @@ export function DiscoverClient(props: {
       setNotices(n);
       setErrors(res.data.errors);
       setExisting((prev) => ({ ...(reset ? {} : prev), ...res.data.existing }));
+      setMailed((prev) => ({ ...(reset ? {} : prev), ...res.data.mailed }));
       if (reset) setSelected(new Set());
       setSearched(true);
       if (reset && activeSaved) void touchSavedSearchAction(activeSaved, pageResults.length);
@@ -153,8 +155,17 @@ export function DiscoverClient(props: {
     run(true, { ...s.filters, providers: s.filters.providers.filter((p) => props.providers[p] !== "disabled") });
   }
 
-  const isInDb = (m: MergedResult) =>
-    m.sources.some((s) => existing[`${s.provider}:${s.externalId}`] || (s.kvkNumber && existing[`kvk:${s.kvkNumber}`]));
+  const domainOf = (m: MergedResult) => extractDomain(m.primary.website);
+  const dbIdOf = (m: MergedResult) =>
+    m.sources.map((s) => existing[`${s.provider}:${s.externalId}`] ?? (s.kvkNumber ? existing[`kvk:${s.kvkNumber}`] : undefined)).find(Boolean)
+    ?? (domainOf(m) ? existing[`domain:${domainOf(m)}`] : undefined);
+  const isInDb = (m: MergedResult) => Boolean(dbIdOf(m));
+  /** Last time this business (or an address on its domain) was emailed. */
+  const mailedAt = (m: MergedResult) => {
+    const id = dbIdOf(m);
+    const d = domainOf(m);
+    return (id && mailed[`biz:${id}`]) || (d && mailed[`domain:${d}`]) || null;
+  };
 
   function toggle(key: string) {
     setSelected((prev) => {
@@ -405,7 +416,8 @@ export function DiscoverClient(props: {
                     {merged.map((m) => {
                       const r = m.primary;
                       const inDb = isInDb(m);
-                      const dbId = m.sources.map((s) => existing[`${s.provider}:${s.externalId}`] ?? (s.kvkNumber ? existing[`kvk:${s.kvkNumber}`] : undefined)).find(Boolean);
+                      const dbId = dbIdOf(m);
+                      const lastMailed = mailedAt(m);
                       return (
                         <TableRow key={m.key} data-state={selected.has(m.key) ? "selected" : undefined}>
                           <TableCell>
@@ -419,6 +431,7 @@ export function DiscoverClient(props: {
                             <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                               {r.industry && <span>{props.industries.find((i) => i.key === r.industry)?.label}</span>}
                               {inDb && dbId && <Link href={`/leads/${dbId}`} className="font-medium text-primary hover:underline">{d.alreadyInDb} →</Link>}
+                              {lastMailed && <Badge variant="warning">{fmt(d.alreadyMailed, { date: formatDate(lastMailed, t.meta.dateLocale) })}</Badge>}
                             </div>
                           </TableCell>
                           <TableCell className="min-w-[220px] text-sm text-muted-foreground">

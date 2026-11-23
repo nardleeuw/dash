@@ -284,6 +284,22 @@ export async function sendApprovedAction(input: unknown): Promise<ActionResult<{
       const taken = new Set((inRuns ?? []).map((r) => r.generated_email_id));
       ids = (data ?? []).map((r) => r.id).filter((id) => !taken.has(id));
     }
+    // Never email the same address twice (also when a business was imported twice).
+    if (ids.length) {
+      const { data: rows } = await supabase.from("generated_emails").select("id, recipient_email").eq("org_id", ws.org.id).in("id", ids);
+      const addrs = [...new Set((rows ?? []).map((r) => r.recipient_email?.toLowerCase()).filter((a): a is string => Boolean(a)))];
+      const { data: sent } = addrs.length
+        ? await supabase.from("outbound_messages").select("to_email").eq("org_id", ws.org.id).eq("status", "sent").in("to_email", addrs)
+        : { data: [] };
+      const already = new Set((sent ?? []).map((s) => String(s.to_email).toLowerCase()));
+      const seen = new Set<string>();
+      ids = (rows ?? []).filter((r) => {
+        const a = r.recipient_email?.toLowerCase();
+        if (!a || already.has(a) || seen.has(a)) return false;
+        seen.add(a);
+        return true;
+      }).map((r) => r.id);
+    }
     if (!ids.length) return fail("nothing_to_send");
     // Clicking "Verzenden" is the approval.
     await supabase.from("generated_emails").update({ review_status: "approved", approved_by: ws.user.id, approved_at: new Date().toISOString() }).eq("org_id", ws.org.id).in("id", ids).eq("generation_status", "completed").neq("review_status", "approved");
