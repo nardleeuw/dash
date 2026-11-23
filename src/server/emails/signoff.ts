@@ -30,7 +30,7 @@ function removeSignatureBlocks(lines: string[], sigLines: string[]): string[] {
 
 export function ensureSignOff(
   body: string,
-  sender: { signature: string | null; sender_name: string | null; agency_name: string; language: "nl" | "en"; formality?: "formal" | "informal" },
+  sender: { signature: string | null; sender_name: string | null; agency_name: string; language: "nl" | "en"; formality?: "formal" | "informal"; website?: string | null },
 ): string {
   const text = body.replace(/\?\./g, "?").replace(/!\./g, "!").replace(/[ \t]+$/gm, "").trimEnd();
   const name = sender.sender_name?.trim() ?? "";
@@ -40,6 +40,19 @@ export function ensureSignOff(
 
   // 1. Drop every copy of the configured signature, wherever the model put it.
   let lines = removeSignatureBlocks(text.split("\n"), closing.split("\n").map(norm).filter(Boolean));
+
+  // Leftovers of an older signature: contact details standing alone on a line
+  // (website, email, phone, name) are signature material, never body text.
+  const site = sender.website?.trim().replace(/^https?:\/\//i, "").replace(/\/$/, "").toLowerCase();
+  const isContactLine = (l: string) => {
+    const v = norm(l).replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (!v) return false;
+    if (site && (v === site || v === `www.${site}`)) return true;
+    if (name && v === norm(name)) return true;
+    if (/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(v)) return true;
+    return /^(\+|0)[\d\s().-]{8,}$/.test(v);
+  };
+  lines = lines.filter((l) => !isContactLine(l));
 
   // 2. Drop a sign-off the model wrote itself at the end: a greeting line followed only by
   //    short signature-like lines (name, role, phone, email, website).

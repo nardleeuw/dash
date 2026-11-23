@@ -219,7 +219,7 @@ export async function generateEmailById(orgId: string, emailId: string) {
   }
 
   // Always close with a greeting and the sender's name.
-  const signer = { signature: agency.signature, sender_name: agency.sender_name, agency_name: agency.agency_name, language: agency.language, formality: agency.formality };
+  const signer = { signature: agency.signature, sender_name: agency.sender_name, agency_name: agency.agency_name, language: agency.language, formality: agency.formality, website: agency.website };
   output.body = ensureSignOff(output.body, signer);
   output.alt_body = ensureSignOff(output.alt_body, signer);
 

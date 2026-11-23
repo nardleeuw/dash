@@ -131,7 +131,7 @@ export async function processRecipient(admin: SupabaseClient, r: Recipient): Pro
 
   // Emails written before sign-offs were guaranteed still get a greeting and name.
   const { data: profile } = email.agency_profile_id
-    ? await admin.from("agency_profiles").select("signature, sender_name, agency_name, language, formality").eq("id", email.agency_profile_id).maybeSingle()
+    ? await admin.from("agency_profiles").select("signature, sender_name, agency_name, language, formality, website").eq("id", email.agency_profile_id).maybeSingle()
     : { data: null };
   const body = profile ? ensureSignOff(email.body as string, { ...profile, language: profile.language === "en" ? "en" : "nl", formality: profile.formality === "informal" ? "informal" : "formal" }) : (email.body as string);
 

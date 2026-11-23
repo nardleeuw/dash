@@ -138,6 +138,9 @@ describe("sign-off", () => {
     expect(out).toBe(`Niels, ik zag dat Aigency AI-oplossingen bouwt.\n\nZo bereik je honderden bedrijven.\n\nSteek je nu wekelijks uren in acquisitie? Interesse?\nBenieuwd geworden? Bekijk alvast hoe het werkt: https://leadwerk-app.vercel.app\n\n${sig}`);
     // Already correct → unchanged.
     expect(ensureSignOff(out, sender)).toBe(out);
+    // Leftovers of an older signature (website/phone on their own line) are removed; links in sentences stay.
+    const old = `Interesse?\nBenieuwd geworden? Bekijk alvast hoe het werkt: https://leadwerk-app.vercel.app\n\nleadwerk-app.vercel.app\n\n${sig}\nleadwerk-app.vercel.app`;
+    expect(ensureSignOff(old, { ...sender, website: "https://leadwerk-app.vercel.app" })).toBe(`Interesse?\nBenieuwd geworden? Bekijk alvast hoe het werkt: https://leadwerk-app.vercel.app\n\n${sig}`);
     // Model wrote a shorter closing of its own → replaced by the profile signature.
     expect(ensureSignOff("Interesse?\n\nGroet,\nNard", sender)).toBe(`Interesse?\n\n${sig}`);
   });
