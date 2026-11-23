@@ -9,6 +9,7 @@ import { createClient } from "@/server/supabase/server";
 import { getDictionary } from "@/i18n/server";
 import { EmailList, type EmailItem, type EmailState } from "./email-list";
 import type { MailboxOption } from "./send-dialog";
+import { MailboxAlert } from "@/components/app/mailbox-alert";
 
 export const metadata = { title: "E-mails" };
 
@@ -65,6 +66,7 @@ export default async function EmailsPage({ searchParams }: PageProps<"/emails">)
   return (
     <>
       <PageHeader title={e.title} description={l.subtitle} />
+      <MailboxAlert orgId={ws.org.id} />
       {generating && <AutoRefresh intervalMs={4000} />}
       {items.length === 0 ? (
         <EmptyState icon={Mail} title={e.empty} description={l.emptyText} action={<Button asChild><Link href="/leads">{l.toLeads}</Link></Button>} />

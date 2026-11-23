@@ -11,6 +11,7 @@ import { isProduction } from "@/server/env";
 import { validateUrlShape } from "@/server/research/safe-fetch";
 import { rateLimit } from "@/server/rate-limit";
 import { checkProviders, type HealthResult } from "@/server/providers/health";
+import { mailErrorCode } from "@/server/sending/mail-errors";
 
 const smtpSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -39,7 +40,7 @@ export async function testSmtpAction(input: unknown): Promise<ActionResult<null>
       await provider.verify();
       return ok(null);
     } catch (err) {
-      return fail(`smtp:${(err as Error).message.slice(0, 160)}`);
+      return fail(`mail:${mailErrorCode((err as Error).message)}`);
     }
   });
 }
@@ -50,6 +51,12 @@ export async function addSmtpAccountAction(input: unknown): Promise<ActionResult
     const p = smtpSchema.parse(input);
     safeHost(p.smtpHost);
     if (p.imapHost) safeHost(p.imapHost);
+    // Never store a mailbox that cannot log in: the problem would only show when sending.
+    try {
+      await new SmtpProvider({ smtp: { host: p.smtpHost, port: p.smtpPort, secure: p.smtpPort === 465 }, imap: null, username: p.username, password: p.password }).verify();
+    } catch (err) {
+      return fail(`mail:${mailErrorCode((err as Error).message)}`);
+    }
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("email_accounts")
@@ -95,6 +102,33 @@ export async function updateAccountAction(id: unknown, input: unknown): Promise<
     const supabase = await createClient();
     const { error } = await supabase.from("email_accounts").update(p).eq("id", accountId).eq("org_id", ws.org.id);
     if (error) throw error;
+    revalidatePath("/integrations");
+    return ok(null);
+  });
+}
+
+/** Replace the password of an SMTP mailbox (verified first) and resume sending right away. */
+export async function updatePasswordAction(id: unknown, password: unknown): Promise<ActionResult<null>> {
+  return safeAction(async () => {
+    const ws = await requireRole("admin");
+    const accountId = z.string().uuid().parse(id);
+    const pw = z.string().min(1).max(500).parse(password);
+    await rateLimit(`smtp-test:${ws.org.id}`, 10, 600);
+    const admin = createAdminClient();
+    const { data: acc } = await admin.from("email_accounts").select("id, provider, smtp_host, smtp_port, smtp_secure, username").eq("id", accountId).eq("org_id", ws.org.id).maybeSingle();
+    if (!acc || acc.provider !== "smtp" || !acc.smtp_host || !acc.username) return fail("not_found");
+    try {
+      await new SmtpProvider({ smtp: { host: acc.smtp_host, port: acc.smtp_port ?? 587, secure: Boolean(acc.smtp_secure) }, imap: null, username: acc.username, password: pw }).verify();
+    } catch (err) {
+      return fail(`mail:${mailErrorCode((err as Error).message)}`);
+    }
+    await admin.from("email_account_secrets").upsert({ email_account_id: acc.id, ciphertext: encryptJson({ password: pw }), updated_at: new Date().toISOString() }, { onConflict: "email_account_id" });
+    await admin.from("email_accounts").update({ status: "active", last_error: null }).eq("id", acc.id);
+    // Emails that waited because the mailbox could not log in go out again from the next pass.
+    const { data: runs } = await admin.from("campaigns").select("id").eq("org_id", ws.org.id).eq("email_account_id", acc.id).eq("status", "running");
+    if (runs?.length) {
+      await admin.from("campaign_recipients").update({ next_send_at: new Date().toISOString() }).eq("org_id", ws.org.id).in("campaign_id", runs.map((r) => r.id)).eq("status", "active").gt("next_send_at", new Date().toISOString());
+    }
     revalidatePath("/integrations");
     return ok(null);
   });

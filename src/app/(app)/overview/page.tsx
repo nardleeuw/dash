@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, AtSign, Building2, CheckCircle2, Circle, Inbox, Mail, MailCheck, Send, Wallet } from "lucide-react";
 import { PageHeader, StatCard } from "@/components/app/page-header";
+import { MailboxAlert } from "@/components/app/mailbox-alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ export default async function OverviewPage() {
 
   return (
     <>
+      <MailboxAlert orgId={org} />
       <PageHeader title={(ws.user.fullName ?? "").trim() ? fmt(o.welcome, { name: (ws.user.fullName ?? "").trim().split(" ")[0] }) : o.welcomePlain} description={o.subtitle} />
 
       {next && (

@@ -141,3 +141,36 @@ describe("campaign sending", () => {
     expect(data!.status).toBe("cancelled");
   });
 });
+
+describe("messages stuck in 'sending'", () => {
+  async function stuckMessage(accountPatch: Record<string, unknown>) {
+    const { data: acc, error: e1 } = await admin.from("email_accounts").insert({ org_id: orgId, provider: "mock", email_address: `stuck-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@studionoord.nl`, is_mock: true, ...accountPatch }).select("id").single();
+    if (e1) throw e1;
+    const { data: c, error: e2 } = await admin.from("campaigns").insert({ org_id: orgId, name: "Stuck", email_account_id: acc!.id, agency_profile_id: profileId, status: "running" }).select("id").single();
+    if (e2) throw e2;
+    const e = await approvedEmailFor(`Vast ${Math.random().toString(36).slice(2, 7)}`, `vast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@voorbeeld.nl`);
+    const { data: em } = await admin.from("generated_emails").select("recipient_email").eq("id", e.emailId).single();
+    const { data: r, error: e3 } = await admin.from("campaign_recipients").insert({ org_id: orgId, campaign_id: c!.id, business_id: e.businessId, generated_email_id: e.emailId, email: em!.recipient_email, status: "active", next_send_at: new Date(Date.now() + 86_400_000).toISOString() }).select("id").single();
+    if (e3) throw e3;
+    const old = new Date(Date.now() - 60 * 60_000).toISOString();
+    const { data: m, error: e4 } = await admin.from("outbound_messages").insert({ org_id: orgId, campaign_id: c!.id, campaign_recipient_id: r!.id, business_id: e.businessId, generated_email_id: e.emailId, email_account_id: acc!.id, sequence_step: 0, to_email: em!.recipient_email, from_email: "x@studionoord.nl", subject: "s", body_text: "b", message_id_header: `<${Math.random().toString(36).slice(2)}@studionoord.nl>`, status: "sending", created_at: old, updated_at: old }).select("id").single();
+    if (e4) throw e4;
+    return { recipientId: r!.id, messageId: m!.id };
+  }
+
+  it("re-queues the message when the mailbox could never log in", async () => {
+    const s = await stuckMessage({ status: "error", last_error: "Invalid login: 534-5.7.9", last_sent_at: null });
+    await tick();
+    const { data: m } = await admin.from("outbound_messages").select("status, error").eq("id", s.messageId).single();
+    const { data: r } = await admin.from("campaign_recipients").select("status").eq("id", s.recipientId).single();
+    expect(m).toMatchObject({ status: "failed", error: "mailbox_login_failed" });
+    expect(r!.status).toBe("active");
+  });
+
+  it("never resends automatically when the outcome is really unknown", async () => {
+    const s = await stuckMessage({ status: "active", last_sent_at: new Date().toISOString() });
+    await tick();
+    const { data: r } = await admin.from("campaign_recipients").select("status, stop_reason").eq("id", s.recipientId).single();
+    expect(r).toMatchObject({ status: "stopped", stop_reason: "unknown_send_outcome" });
+  });
+});

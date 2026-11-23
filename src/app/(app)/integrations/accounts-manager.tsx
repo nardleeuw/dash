@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { FlaskConical, Loader2, Plug, Plus, Save, Trash2 } from "lucide-react";
+import { FlaskConical, KeyRound, Loader2, Plug, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,8 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useT } from "@/i18n/client";
-import { fmt } from "@/i18n/format";
-import { addDemoAccountAction, addSmtpAccountAction, removeAccountAction, testSmtpAction, updateAccountAction } from "./actions";
+import { addDemoAccountAction, addSmtpAccountAction, removeAccountAction, testSmtpAction, updateAccountAction, updatePasswordAction } from "./actions";
+import { mailErrorCode } from "@/server/sending/mail-errors";
 
 type Account = {
   id: string; provider: string; email_address: string; display_name: string | null; status: string; daily_limit: number;
@@ -23,7 +23,7 @@ export function AccountsManager(props: { accounts: Account[]; canManage: boolean
   const i = t.integrations;
   const router = useRouter();
   const [pending, start] = useTransition();
-  const err = (code: string) => toast.error(code.startsWith("smtp:") ? fmt(i.testFailed, { error: code.slice(5) }) : (t.common.errors as Record<string, string>)[code] ?? code);
+  const err = (code: string) => toast.error(code.startsWith("mail:") ? (i.mailErrors as Record<string, string>)[code.slice(5)] ?? i.mailErrors.other : (t.common.errors as Record<string, string>)[code] ?? code, { duration: 12_000 });
 
   return (
     <div className="space-y-4">
@@ -70,7 +70,13 @@ function AccountRow({ account: a, canManage }: { account: Account; canManage: bo
           <Badge variant={a.status === "active" ? "success" : a.status === "error" ? "destructive" : "secondary"}>{(i.status as Record<string, string>)[a.status] ?? a.status}</Badge>
         </div>
       </div>
-      {a.last_error && <p className="mt-1 text-xs text-destructive">{a.last_error}</p>}
+      {a.last_error && (
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2">
+          <p className="text-sm text-destructive">{(i.mailErrors as Record<string, string>)[mailErrorCode(a.last_error) ?? "other"] ?? i.mailErrors.other}</p>
+          {canManage && a.provider === "smtp" && !a.is_mock && <PasswordDialog accountId={a.id} />}
+        </div>
+      )}
+      {!a.last_error && canManage && a.provider === "smtp" && !a.is_mock && <div className="mt-2"><PasswordDialog accountId={a.id} variant="ghost" /></div>}
       {canManage && (
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="space-y-1"><Label className="text-xs">{i.dailyLimit}</Label><Input type="number" min={1} max={2000} value={form.daily_limit} onChange={(e) => setForm({ ...form, daily_limit: Number(e.target.value) })} /></div>
@@ -130,6 +136,31 @@ function SmtpDialog({ onDone, onError }: { onDone: () => void; onError: (code: s
             const r = await addSmtpAccountAction(payload());
             if (r.ok) { setOpen(false); onDone(); } else onError(r.error);
           })}>{t.common.add}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PasswordDialog({ accountId, variant = "default" }: { accountId: string; variant?: "default" | "ghost" }) {
+  const t = useT();
+  const i = t.integrations;
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pending, start] = useTransition();
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild><Button size="sm" variant={variant}><KeyRound />{i.changePassword}</Button></DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle>{i.changePassword}</DialogTitle><DialogDescription>{i.passwordHint}</DialogDescription></DialogHeader>
+        <div className="space-y-1.5"><Label htmlFor="new-password">{i.password}</Label><Input id="new-password" type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" /></div>
+        <DialogFooter>
+          <Button disabled={pending || !pw} onClick={() => start(async () => {
+            const r = await updatePasswordAction(accountId, pw);
+            if (r.ok) { toast.success(i.passwordSaved); setOpen(false); setPw(""); router.refresh(); }
+            else toast.error(r.error.startsWith("mail:") ? (i.mailErrors as Record<string, string>)[r.error.slice(5)] ?? i.mailErrors.other : t.common.errors.unexpected, { duration: 12_000 });
+          })}>{pending && <Loader2 className="animate-spin" />}{t.common.save}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -34,12 +34,26 @@ async function senderIdentity(admin: SupabaseClient, orgId: string, language: "n
   return { legalName: org.legal_name!, privacyUrl: notice?.url ?? org.privacy_policy_url, footerText: notice?.email_footer ?? null, language };
 }
 
-/** Messages stuck in "sending" have an unknown outcome: never resend automatically. */
+/**
+ * Messages stuck in "sending" have an unknown outcome: never resend automatically —
+ * unless the mailbox cannot log in and has never sent anything, in which case the
+ * message cannot have gone out and simply waits for the mailbox to be fixed.
+ */
 async function recoverStale(admin: SupabaseClient) {
   const cutoff = new Date(Date.now() - STALE_SENDING_MINUTES * 60_000).toISOString();
-  const { data } = await admin.from("outbound_messages").update({ status: "failed", error: "unknown_outcome_manual_check" }).eq("status", "sending").lt("updated_at", cutoff).select("campaign_recipient_id");
-  for (const r of data ?? []) {
-    if (r.campaign_recipient_id) await release(admin, r.campaign_recipient_id, { status: "stopped", stop_reason: "unknown_send_outcome" });
+  const { data: stuck } = await admin.from("outbound_messages").select("id, campaign_recipient_id, email_account_id").eq("status", "sending").lt("updated_at", cutoff);
+  if (!stuck?.length) return;
+  const accountIds = [...new Set(stuck.map((m) => m.email_account_id).filter(Boolean))] as string[];
+  const { data: accounts } = accountIds.length ? await admin.from("email_accounts").select("id, status, last_sent_at").in("id", accountIds) : { data: [] };
+  const neverSent = new Set((accounts ?? []).filter((a) => a.status === "error" && !a.last_sent_at).map((a) => a.id));
+  for (const m of stuck) {
+    if (m.email_account_id && neverSent.has(m.email_account_id)) {
+      const { data: done } = await admin.from("outbound_messages").update({ status: "failed", error: "mailbox_login_failed" }).eq("id", m.id).eq("status", "sending").select("id");
+      if (done?.length && m.campaign_recipient_id) await release(admin, m.campaign_recipient_id, { next_send_at: new Date(Date.now() + 3_600_000).toISOString() });
+      continue;
+    }
+    const { data: done } = await admin.from("outbound_messages").update({ status: "failed", error: "unknown_outcome_manual_check" }).eq("id", m.id).eq("status", "sending").select("id");
+    if (done?.length && m.campaign_recipient_id) await release(admin, m.campaign_recipient_id, { status: "stopped", stop_reason: "unknown_send_outcome" });
   }
 }
 
