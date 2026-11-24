@@ -9,7 +9,7 @@ import { createClient } from "@/server/supabase/server";
 import { getDictionary } from "@/i18n/server";
 import { providerStatusList } from "@/server/providers/mode";
 import { oauthConfigured } from "@/server/sending/providers/oauth";
-import { env, isProduction } from "@/server/env";
+import { isProduction } from "@/server/env";
 import { inngestEnabled } from "@/server/jobs/client";
 import { AccountsManager } from "./accounts-manager";
 import { ProviderCheck } from "./provider-check";
@@ -33,8 +33,8 @@ export default async function IntegrationsPage({ searchParams }: PageProps<"/int
   const { data: accounts } = await supabase.from("email_accounts").select("id, provider, email_address, display_name, status, daily_limit, hourly_limit, min_delay_seconds, last_error, last_sent_at, is_mock, imap_host").eq("org_id", ws.org.id).order("created_at");
   const lang = t.meta.locale as "nl" | "en";
   const i = t.integrations;
-  const statuses = providerStatusList();
-  const kvkTest = /\/test\//.test(env().KVK_BASE);
+  // Only providers the app still uses (KVK is switched off) — an unknown key must never break the page.
+  const statuses = providerStatusList().filter((s) => s.key in LABELS);
 
   return (
     <>
@@ -54,7 +54,7 @@ export default async function IntegrationsPage({ searchParams }: PageProps<"/int
                   <p className="text-xs text-muted-foreground">{LABELS[s.key].use[lang]}</p>
                 </div>
                 {s.mode === "live" ? (
-                  <Badge variant={s.key === "kvk" && kvkTest ? "secondary" : "success"}>{s.key === "kvk" && kvkTest ? t.discover.status.test : t.discover.status.live}</Badge>
+                  <Badge variant="success">{t.discover.status.live}</Badge>
                 ) : s.mode === "mock" ? (
                   <Badge variant="mock"><FlaskConical />{t.discover.status.mock}</Badge>
                 ) : (
