@@ -14,6 +14,13 @@ async function markPaid(ownerEmail: string) {
   await db.end();
 }
 
+async function makePlatformAdmin(userEmail: string) {
+  const db = new pg.Client({ connectionString: process.env.E2E_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres" });
+  await db.connect();
+  await db.query(`insert into public.platform_admins (user_id) select id from auth.users where email = $1 on conflict do nothing`, [userEmail]);
+  await db.end();
+}
+
 /**
  * The core journey: sign up → workspace → sender profile → identity → find
  * businesses → import → generate individual emails → review → approve.
@@ -79,6 +86,16 @@ test("agency can go from sign-up to an approved, individually written email", as
   await expect(page.getByText("Compliance", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Goedkeuren" }).click();
   await expect(page.getByText("Goedgekeurd").first()).toBeVisible();
+
+  // Every page must render for a normal owner and for the platform owner (who sees extra panels).
+  const pages = ["/overview", "/discover", "/leads", "/emails", "/emails?filter=sent", "/inbox", "/settings", "/settings?tab=organization", "/integrations", "/billing"];
+  for (const asAdmin of [false, true]) {
+    if (asAdmin) await makePlatformAdmin(email);
+    for (const p of pages) {
+      await page.goto(p);
+      await expect(page.getByText("Er ging iets mis"), `${p} (platform admin: ${asAdmin})`).toHaveCount(0);
+    }
+  }
 });
 
 test("unauthenticated visitors are redirected to login", async ({ page }) => {
